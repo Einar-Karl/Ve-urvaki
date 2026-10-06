@@ -1,0 +1,9 @@
+{
+  "name": "ve-urvaki",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Weather-risk operations dashboard prototype for tour operators",
+  "scripts": {
+    "start": "python3 -m http.server 8080"
+  }
+}

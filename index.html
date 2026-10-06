@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="is">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Veðurvaki</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+
+<div class="appbar"><div class="in">
+  <div class="brand"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="10" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 13c2.5-2 4.5-2 7 0s4.5 2 7 0M4 9c2.5-2 4.5-2 7 0s4.5 2 7 0" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>Veðurvaki</div>
+  <div class="client">Rekstrarborð · Arctic Adventures</div>
+  <nav class="nav" aria-label="Valmynd"><a class="on" href="#yfirlit">Yfirlit</a><a href="#fylki">72 klst.</a><a href="#brottfor">Brottför</a><a href="#arangur">Árangur</a></nav>
+  <span class="proto">Prótótýpa · sýnigögn</span>
+</div></div>
+
+<div class="wrap">
+  <div class="status" id="yfirlit">
+    <span class="live"><i></i><b>Spá uppfærð 08:00</b></span>
+    <span>Næsta keyrsla 14:00</span>
+    <span>Líkan: ECMWF + HARMONIE (Veðurstofa) + MET Nordic · 2,5 km</span>
+    <span>Bókanir: Bókun · samstillt fyrir 3 mín.</span>
+    <span>Mánudagur 5. október 2026</span>
+  </div>
+
+  <div class="alert" id="alert"></div>
+  <section class="kpis" id="kpis"></section>
+
+  <div class="grid2">
+    <section class="panel">
+      <div class="ph"><h2>Ísland · vindhviður og brottfarir</h2>
+        <div class="legend"><span><i class="dot" style="background:var(--go)"></i>Fer fram</span><span><i class="dot" style="background:var(--change)"></i>Breyting líkleg</span><span><i class="dot" style="background:var(--cancel)"></i>Aflýsing líkleg</span></div>
+      </div>
+      <div class="mapbox"><svg class="map" id="map" viewBox="0 0 470 318" role="img" aria-label="Kort af Íslandi með vindspá og brottförum"></svg></div>
+      <div class="scrub">
+        <button class="play" id="play" aria-label="Spila spá">▶</button>
+        <input type="range" id="hour" min="0" max="71" step="1" value="10" aria-label="Tími spár">
+        <span class="tm" id="tm"></span>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="ph"><h2>Ákvörðunarröð</h2><span class="s">Næstu 72 klst. · raðað eftir fresti og áhættu</span></div>
+      <div class="queue" id="queue" role="listbox" aria-label="Brottfarir sem þarf að skoða"></div>
+    </section>
+  </div>
+
+  <section class="panel" id="fylki">
+    <div class="ph"><h2>Áhættufylki · 72 klst.</h2>
+      <div class="mxleg"><span>Lítil</span><span class="ramp"></span><span>Mikil</span><span style="margin-left:10px">▢ = bókuð brottför</span></div></div>
+    <div class="matrixwrap" style="padding:8px 14px 12px"><table class="mx" id="mx"></table></div>
+  </section>
+
+  <section class="panel" id="brottfor"></section>
+
+  <section class="panel" id="arangur">
+    <div class="ph"><h2>Árangur tímabilsins · 1. sept – 4. okt</h2><span class="s">Hvað Veðurvaki hefði skilað miðað við aflýsingasögu síðasta vetrar</span></div>
+    <div class="season">
+      <div class="dsec"><h3>Endurheimtar tekjur á viku (m.kr.)</h3><div id="seasonchart"></div></div>
+      <div class="dsec">
+        <h3>Lykiltölur</h3>
+        <dl class="kv" id="seasonkv"></dl>
+        <p class="note">Endurheimt = endurbókanir sem hefðu annars orðið endurgreiðslur + sala á varaferðum. Reiknað á sögulegum gögnum (backtest).</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <span><b>Um þessa prótótýpu.</b> Allar veður-, bókunar- og verðtölur eru tilbúin sýnigögn. Ferðaheiti og tímar eru dæmi um tegundir ferða, ekki raunveruleg dagskrá.</span>
+    <span>Í raunútgáfu: spár frá Veðurstofu Íslands og MET Norway, bókanir og gestalistar úr Bókun, og áhættubil sem lærast af aflýsingasögu hverrar ferðar. Starfsmaður staðfestir alltaf aflýsingu.</span>
+  </div>
+</div>
+
+<script src="src/data.js"></script>
+<script src="src/model.js"></script>
+<script src="src/views.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>
