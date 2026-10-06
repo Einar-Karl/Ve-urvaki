@@ -30,8 +30,7 @@ function drawMap(){
       <text x="${x}" y="${y+3}" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="7.5" font-weight="600" fill="var(--panel)">${Math.round(R.cancel*100)}</text>
       ${s?`<text x="${x+15}" y="${y+3}" font-family="IBM Plex Sans,sans-serif" font-size="9" font-weight="600" fill="var(--ink)" stroke="var(--land)" stroke-width="3" paint-order="stroke">${t.name}</text>`:""}</g>`});
   // legend
-  h+=`<g font-family="IBM Plex Sans,sans-serif" font-size="8" fill="var(--muted)"><text x="10" y="308">Litur á landi = vindhviður · örvar = vindátt og styrkur · tala í pinna = líkur á aflýsingu (%) næstu brottfarar</text>
-    <g transform="translate(400,22)"><rect x="-6" y="-12" width="66" height="42" rx="4" fill="var(--panel)" opacity=".85"/><text x="0" y="-2">Hviður</text>
+  h+=`<g font-family="IBM Plex Sans,sans-serif" font-size="8" fill="var(--muted)"><g transform="translate(400,22)"><rect x="-6" y="-12" width="66" height="42" rx="4" fill="var(--panel)" opacity=".85"/><text x="0" y="-2">Hviður</text>
     <rect x="0" y="4" width="9" height="6" fill="var(--go)" opacity=".5"/><text x="12" y="10">&lt; 20 m/s</text>
     <rect x="0" y="13" width="9" height="6" fill="var(--change)" opacity=".5"/><text x="12" y="19">20–27</text>
     <rect x="0" y="22" width="9" height="6" fill="var(--cancel)" opacity=".5"/><text x="12" y="28">&gt; 27</text></g></g>`;

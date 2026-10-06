@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Veðurvaki</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="src/styles.css">
 </head>
 <body>
@@ -35,8 +35,9 @@
         <div class="legend"><span><i class="dot" style="background:var(--go)"></i>Fer fram</span><span><i class="dot" style="background:var(--change)"></i>Breyting líkleg</span><span><i class="dot" style="background:var(--cancel)"></i>Aflýsing líkleg</span></div>
       </div>
       <div class="mapbox"><svg class="map" id="map" viewBox="0 0 470 318" role="img" aria-label="Kort af Íslandi með vindspá og brottförum"></svg></div>
+      <p class="maphint">Litur á landi = vindhviður · örvar = vindátt og styrkur · tala í pinna = líkur á aflýsingu (%) næstu brottfarar</p>
       <div class="scrub">
-        <button class="play" id="play" aria-label="Spila spá">▶</button>
+        <button class="play" id="play" aria-label="Spila spá"><svg class="i-play" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 1.2v9.6L10.5 6z"/></svg><svg class="i-pause" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 1.5h2.8v9H2.5zM6.7 1.5h2.8v9H6.7z"/></svg></button>
         <input type="range" id="hour" min="0" max="71" step="1" value="10" aria-label="Tími spár">
         <span class="tm" id="tm"></span>
       </div>

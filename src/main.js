@@ -11,8 +11,9 @@ function render(keepScroll){
 document.getElementById("hour").oninput=e=>{hour=+e.target.value;setTime();drawMap()};
 let timer=null;
 document.getElementById("play").onclick=e=>{
-  if(timer){clearInterval(timer);timer=null;e.target.textContent="▶";return}
-  e.target.textContent="❚❚";
+  const btn=e.currentTarget;
+  if(timer){clearInterval(timer);timer=null;btn.classList.remove("on");return}
+  btn.classList.add("on");
   timer=setInterval(()=>{hour=(hour+1)%72;document.getElementById("hour").value=hour;setTime();drawMap()},350)};
 
 drawSeason();render();
