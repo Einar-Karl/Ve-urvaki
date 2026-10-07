@@ -81,7 +81,12 @@ function drawTop(all){
    ["Hægt að endurheimta",fmtM(rev*.64),"g","64% endurbókun + varaferðir"]];
   document.getElementById("kpis").innerHTML=kp.map(k=>`<div class="kpi"><div class="l">${k[0]}</div><div class="v ${k[2]}">${k[1]}</div><div class="n">${k[3]}</div></div>`).join("");
   const peak=Object.keys(REG).map(r=>({r,...(()=>{let m={g:0,h:0};for(let h=NOW;h<72;h++){const g=wx(r,h).g;if(g>m.g)m={g,h}}return m})()})).sort((a,b)=>b.g-a.g)[0];
-  document.getElementById("alert").innerHTML=`<div class="ic">!</div><div class="t"><b>Djúp lægð nálgast úr suðvestri.</b> Hviður allt að ${Math.round(peak.g)} m/s á ${REG[peak.r].n.toLowerCase()} ${dayLbl(peak.h)} um kl. ${hhmm(peak.h)}. ${risky.length} brottfarir með ${risky.reduce((s,d)=>s+d.pax,0)} gestum þurfa ákvörðun.</div><button class="btn primary" id="toQ">Fara yfir röð</button>`;
+  const al=document.getElementById("alert");const riskyPax=risky.reduce((s,d)=>s+d.pax,0);
+  const calm=peak.g<20&&!risky.length;
+  al.className="alert"+(calm?" calm":"");
+  al.innerHTML=calm
+    ?`<div class="ic">✓</div><div class="t"><b>Engin veruleg veðuráhætta næstu 72 klst.</b> Mestu hviður ${Math.round(peak.g)} m/s á ${REG[peak.r].n.toLowerCase()} ${dayLbl(peak.h)} um kl. ${hhmm(peak.h)}.</div><button class="btn" id="toQ">Sjá röð</button>`
+    :`<div class="ic">!</div><div class="t"><b>Hvassviðri í spánni.</b> Hviður allt að ${Math.round(peak.g)} m/s á ${REG[peak.r].n.toLowerCase()} ${dayLbl(peak.h)} um kl. ${hhmm(peak.h)}. ${risky.length} brottfarir með ${riskyPax} gestum þurfa ákvörðun.</div><button class="btn primary" id="toQ">Fara yfir röð</button>`;
   document.getElementById("toQ").onclick=()=>document.getElementById("queue").scrollIntoView({behavior:"smooth",block:"center"});
 }
 
@@ -151,7 +156,7 @@ function drawDetail(all){
       <div><h3>Spá yfir ferðartímann · ráðandi þáttur</h3>${chartFor(d)}</div>
       <div><h3>Hvað ræður spánni</h3>
        <table class="fx"><tr><th>Þáttur</th><th class="num">Hámark í ferð</th><th class="num">Áhættubil</th><th class="num">Vægi</th></tr>${fx}</table>
-       <p class="note" style="margin-top:6px">Áhættubil lærast af 214 fyrri brottförum þessarar ferðar (2023–2026). Spágæði fyrir þessa staðsetningu og fyrirvara: 87% réttar ákvarðanir.</p></div>
+       <p class="note" style="margin-top:6px">${extraNotes(d)}Áhættumörk koma úr stillingum ferðartegundar og lærast af aflýsingasögu þegar útkomugögn hafa verið send inn (sjá Tengingar).</p></div>
     </div>
     <div class="dsec">
       <div><h3>Fjárhagsleg áhrif</h3>
@@ -174,17 +179,89 @@ function drawDetail(all){
   el.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{lang=b.dataset.l;drawDetail(D())});
 }
 
-// ---------- season
-function drawSeason(){
-  const wk=[["1.–7. sep",.6],["8.–14. sep",1.4],["15.–21. sep",.9],["22.–28. sep",2.8],["29. sep–4. okt",3.6]];
-  const W=520,H=190,L=34,B=34,T=14;const mx=4;const bw=(W-L-10)/wk.length;
-  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Endurheimtar tekjur á viku">`;
-  for(let v=0;v<=mx;v++){const y=T+(1-v/mx)*(H-T-B);s+=`<line x1="${L}" x2="${W-10}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width=".7"/><text x="${L-6}" y="${y+3}" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="9" fill="var(--muted)">${v}</text>`}
-  wk.forEach(([l,v],i)=>{const x=L+i*bw+bw*.2,w=bw*.6,y=T+(1-v/mx)*(H-T-B);
-    s+=`<rect x="${x}" y="${y}" width="${w}" height="${H-B-y}" rx="2" fill="${i===wk.length-1?"var(--accent)":"color-mix(in srgb,var(--accent) 55%,var(--panel))"}"/>
-    <text x="${x+w/2}" y="${y-5}" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="10" fill="var(--ink)">${String(v).replace(".",",")}</text>
-    <text x="${x+w/2}" y="${H-B+14}" text-anchor="middle" font-family="IBM Plex Sans,sans-serif" font-size="9.5" fill="var(--muted)">${l}</text>`});
-  document.getElementById("seasonchart").innerHTML=s+`</svg><p class="note">Haustlægðir byrja seint í september. Samtals 9,3 m.kr. á fimm vikum.</p>`;
-  const kv=[["Brottfarir vaktaðar","1.284"],["Veðurtengdar aflýsingar","61"],["Þar af ákveðnar ≥ 24 klst. fyrir","48 (79%)"],["Gestir endurbókaðir","1.112 af 1.736 (64%)"],["Varaferðir seldar","187"],["Endurheimtar tekjur","9,3 m.kr."],["Endurgreiðslur sem féllu niður","−7,1 m.kr."],["Tímar spöruð í þjónustuveri","≈ 140 klst."]];
-  document.getElementById("seasonkv").innerHTML=kv.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join("");
+// ---------- status, notes, history, connections
+const IS_DAY=["Sunnudagur","Mánudagur","Þriðjudagur","Miðvikudagur","Fimmtudagur","Föstudagur","Laugardagur"];
+const IS_MON=["janúar","febrúar","mars","apríl","maí","júní","júlí","ágúst","september","október","nóvember","desember"];
+const $=id=>document.getElementById(id);
+const esc=x=>String(x??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function drawStatus(){
+  const m=FC_META.mode,live=m==="live";
+  const g=FC_META.generatedAt?new Date(FC_META.generatedAt):null;
+  const hm=g?String(g.getUTCHours()).padStart(2,"0")+":"+String(g.getUTCMinutes()).padStart(2,"0"):"";
+  const ok=(FC_META.sources||[]).filter(s=>s.ok).map(s=>s.label);
+  $("st-live").className="live"+(live?"":" off");
+  $("st-live").innerHTML=`<i></i><b>${live?"Spá sótt "+hm+" (UTC)":m==="demo"?"Sýnigögn · engin tenging við veðurþjónustur":"Innbyggð sýnigögn · enginn netþjónn"}</b>`;
+  $("st-models").textContent=live?"Heimildir: "+ok.join(" + "):"Veðurlíkan: tilbúin sýnigögn";
+  $("st-book").textContent="Bókanir og verð: sýnigögn (engin tenging við bókunarkerfi)";
+  const d=hDate(NOW);$("st-date").textContent=`${IS_DAY[d.getUTCDay()]} ${d.getUTCDate()}. ${IS_MON[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+  const b=$("badge");b.className="proto"+(live?" live":"");
+  b.textContent=live?"Beint · veðurgögn":m==="demo"?"Sýnigögn":"Prótótýpa · sýnigögn";
+  b.title=live?"Veðurgögn eru sótt beint. Bókanir og verð eru enn sýnigögn.":(FC_META.demoReason||"");
+  const att=[...new Set((FC_META.sources||[]).filter(s=>s.ok&&s.attribution).map(s=>s.attribution))];
+  if(HIST&&HIST.mode==="live"&&HIST.attribution)att.push(HIST.attribution);
+  $("attr").textContent=att.length?"Gagnaheimildir: "+[...new Set(att)].join(" · "):"";
+}
+
+function extraNotes(d){
+  const out=[],t=d.t;
+  const o=OBS&&OBS[t.r];
+  if(o&&(o.g!=null||o.w!=null))out.push(`Mæling núna${o.name?" ("+esc(o.name)+(o.km!=null?", "+o.km+" km":"")+")":""}: ${o.g!=null?"hviður "+String(o.g).replace(".",",")+" m/s":"vindur "+String(o.w).replace(".",",")+" m/s"}.`);
+  if(t.type==="aurora"&&KP&&KP.length){
+    const at=hDate(d.h).getTime();const k=KP.reduce((b,x)=>Math.abs(new Date(x.t)-at)<Math.abs(new Date(b.t)-at)?x:b);
+    if(Math.abs(new Date(k.t)-at)<=6*3600e3)out.push(`Kp-gildi nálægt brottför: ${String(k.kp).replace(".",",")} (NOAA).`);
+  }
+  const rd=ROADS&&ROADS[t.r];if(rd&&rd.length)out.push(`Vegagerðin: ${rd.length} atvik á svæðinu, þar af ${rd.filter(r=>r.closed).length} lokanir.`);
+  return out.length?out.join(" ")+" ":"";
+}
+
+// Daily maxima of gust inside a tour's operating window, from the hourly history series.
+function dailyMax(region,from,to){
+  const a=HIST&&HIST.regions[region];if(!a)return[];
+  const g=a.g,n=Math.floor(g.length/24),out=[];
+  for(let d=0;d<n;d++){let m=null;for(let h=from;h<to;h++){const v=g[d*24+h];if(v!=null&&(m==null||v>m))m=v}out.push(m)}
+  return out;
+}
+const tourWindow=t=>[Math.min(...t.dep),Math.min(24,Math.max(...t.dep)+t.dur)];
+
+function drawHistory(){
+  const el=$("sagabody");
+  if(!HIST){el.innerHTML=`<div class="dsec"><p class="note">Söguleg gögn ekki tiltæk (enginn netþjónn).</p></div>`;return}
+  const start=new Date(HIST.start),days=HIST.days;
+  const dl=i=>{const d=new Date(start.getTime()+i*86400e3);return `${d.getUTCDate()}. ${MON[d.getUTCMonth()]}`};
+  $("sagasub").textContent=`${dl(0)} – ${dl(days-1)} · ${HIST.mode==="live"?"ERA5 endurgreining (Open-Meteo)":"sýnigögn"} · dagtími ferðar`;
+  const tourId=parseInt(selKey)||1,sel=TOURS.find(t=>t.id===tourId)||TOURS[0];
+  const rows=TOURS.map(t=>{const [lo,hi]=TYPES[t.type].f.g,[a,b]=tourWindow(t),dm=dailyMax(t.r,a,b);
+    return {t,lo,hi,over:dm.filter(v=>v!=null&&v>=hi).length,warn:dm.filter(v=>v!=null&&v>=lo&&v<hi).length,n:dm.filter(v=>v!=null).length}}).sort((x,y)=>y.over-x.over||y.warn-x.warn);
+  const bars=rows.map(r=>`<tr class="${r.t.id===sel.id?"sel":""}"><td>${esc(r.t.name)}</td><td class="num">${r.over} af ${r.n}</td>
+    <td><span class="hbar"><i style="width:${r.over/Math.max(1,r.n)*100}%;background:var(--cancel)"></i><i style="width:${r.warn/Math.max(1,r.n)*100}%;background:var(--change)"></i></span></td></tr>`).join("");
+  // chart for the selected tour
+  const [lo,hi]=TYPES[sel.type].f.g,[wa,wb]=tourWindow(sel),dm=dailyMax(sel.r,wa,wb);
+  const W=520,H=190,L=34,B=26,T=12,vmax=Math.max(hi*1.2,...dm.filter(v=>v!=null))*1.05,bw=(W-L-8)/Math.max(1,dm.length);
+  const y=v=>T+(1-v/vmax)*(H-T-B);
+  let c=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Hæsta hviða á dag, ${esc(sel.name)}">`;
+  for(let i=0;i<=4;i++){const v=vmax/4*i;c+=`<line x1="${L}" x2="${W-8}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width=".7"/><text x="${L-6}" y="${y(v)+3}" text-anchor="end" font-family="IBM Plex Mono,monospace" font-size="9" fill="var(--muted)">${Math.round(v)}</text>`}
+  dm.forEach((v,i)=>{if(v==null)return;const col=v>=hi?"var(--cancel)":v>=lo?"var(--change)":"var(--go)";
+    c+=`<rect x="${L+i*bw+1}" y="${y(v)}" width="${Math.max(1,bw-2)}" height="${H-B-y(v)}" rx="1.5" fill="${col}" opacity=".85"><title>${dl(i)}: ${String(Math.round(v*10)/10).replace(".",",")} m/s</title></rect>`;
+    if(i%5===0)c+=`<text x="${L+i*bw+bw/2}" y="${H-10}" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="9" fill="var(--muted)">${dl(i)}</text>`});
+  c+=`<line x1="${L}" x2="${W-8}" y1="${y(lo)}" y2="${y(lo)}" stroke="var(--change)" stroke-dasharray="4 3"/><line x1="${L}" x2="${W-8}" y1="${y(hi)}" y2="${y(hi)}" stroke="var(--cancel)" stroke-dasharray="4 3"/>
+    <text x="${W-10}" y="${y(hi)-4}" text-anchor="end" font-family="IBM Plex Sans,sans-serif" font-size="9" fill="var(--cancel)">Aflýsingarmörk ${hi}</text></svg>`;
+  // facts across all regions
+  let peak={g:-1};for(const r in HIST.regions){HIST.regions[r].g.forEach((v,i)=>{if(v!=null&&v>peak.g)peak={g:v,r,i}})}
+  const sr=rows.find(r=>r.t.id===sel.id);
+  const kv=[["Tímabil",`${dl(0)} – ${dl(days-1)}`],["Valin ferð",esc(sel.name)],["Dagar yfir aflýsingarmörkum",`${sr.over} af ${sr.n}`],["Dagar í áhættubili",`${sr.warn} af ${sr.n}`],
+    ["Mesta hviða á landinu",peak.g<0?"–":`${String(Math.round(peak.g*10)/10).replace(".",",")} m/s · ${REG[peak.r].n}, ${dl(Math.floor(peak.i/24))}`],["Heimild",HIST.mode==="live"?"Open-Meteo / ERA5":"Sýnigögn"]];
+  el.innerHTML=`<div class="dsec"><h3>Hæsta hviða á dag · ${esc(sel.name)}</h3>${c}<p class="note">Hæsta hviða á ferðatíma hvers dags (kl. ${hhmm(wa)}–${hhmm(wb)}). Grænt: undir áhættumörkum, gult: í áhættubili, rautt: yfir sögulegum aflýsingarmörkum ferðartegundar.</p></div>
+    <div class="dsec"><h3>Dagar yfir aflýsingarmörkum eftir ferð</h3><table class="fx hist"><tbody>${bars}</tbody></table>
+    <dl class="kv">${kv.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join("")}</dl></div>`;
+}
+
+function drawConnections(){
+  const el=$("tengbody");if(!el)return;
+  const mode=FC_META.mode;
+  $("tengsub").textContent=mode==="live"?"Veðurgögn sótt beint":mode==="demo"?"Sýnigögn í notkun: "+(FC_META.demoReason||""):"Enginn netþjónn tengdur";
+  if(!HEALTH){el.innerHTML=`<p class="note" style="padding:14px 18px">Netþjónn er ekki í gangi. Keyrðu <code>npm start</code> og opnaðu síðuna í gegnum hann til að sjá stöðu tenginga.</p>`;return}
+  const pill={ok:["p-go","Tengt"],error:["p-cancel","Villa"],unconfigured:["p-change","Ekki stillt"]};
+  el.innerHTML=`<table class="fx conn"><thead><tr><th>Heimild</th><th>Tegund</th><th>Staða</th><th>Nánar</th><th>Leyfi</th></tr></thead><tbody>${HEALTH.map(c=>{const [cl,tx]=pill[c.status]||pill.error;
+    return `<tr><td><b>${esc(c.label)}</b></td><td>${c.kinds.map(esc).join(", ")}</td><td><span class="pill ${cl}">${tx}</span>${c.ms!=null&&c.status==="ok"?` <span class="mono">${c.ms} ms</span>`:""}</td><td class="det">${esc(c.detail)}</td><td class="det">${esc(c.license)}</td></tr>`}).join("")}</tbody></table>`;
 }

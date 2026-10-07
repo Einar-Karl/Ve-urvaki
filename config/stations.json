@@ -1,0 +1,4 @@
+{
+  "_comment": "Pin IMO station ids to regions when the feed has no coordinates, e.g. \"rvk\": \"1\". Run npm run check to see station ids.",
+  "rvk": [], "rnes": [], "west": [], "hl": [], "south": [], "se": [], "north": []
+}

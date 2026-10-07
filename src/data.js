@@ -1,5 +1,6 @@
 // Static prototype data: time axis, regions, tour types, tours, departures, map geometry.
-const START=new Date(2026,9,5,0,0);const NOW=8;
+// START is midnight UTC of day 0 (Iceland is on UTC all year); both are replaced when live data loads.
+let START=new Date(Date.UTC(2026,9,5));let NOW=8;
 const WD=["sun","mán","þri","mið","fim","fös","lau"];
 const MON=["jan","feb","mar","apr","maí","jún","júl","ágú","sep","okt","nóv","des"];
 
@@ -43,10 +44,14 @@ const TOURS=[
  {id:12,name:"Norðurljós við Mývatn",type:"aurora",r:"north",ll:[-17.0,65.62],dep:[21],dur:3,pax:[28,30,34],cap:40,price:12900},
 ];
 
-// Departures list (one entry per tour, day and departure time from NOW onwards)
+// Departures list (one entry per tour, day and departure time from NOW onwards). Rebuilt when NOW changes.
 const DEPS=[];
-TOURS.forEach(t=>[0,1,2].forEach(d=>{if(!t.pax[d])return;t.dep.forEach((hh,i)=>{const h=d*24+hh;if(h<NOW-1)return;
-  const pax=Math.round(t.pax[d]/t.dep.length*(i?0.85:1.15));DEPS.push({key:`${t.id}-${h}`,t,h,pax})})}));
+function buildDeps(){
+  DEPS.length=0;
+  TOURS.forEach(t=>[0,1,2].forEach(d=>{if(!t.pax[d])return;t.dep.forEach((hh,i)=>{const h=d*24+hh;if(h<NOW-1)return;
+    const pax=Math.round(t.pax[d]/t.dep.length*(i?0.85:1.15));DEPS.push({key:`${t.id}-${h}`,t,h,pax})})}));
+}
+buildDeps();
 
 // Map geometry
 const COAST=[[-22.7,63.82],[-22.35,63.8],[-22.0,63.85],[-21.4,63.83],[-21.0,63.86],[-20.6,63.72],[-20.2,63.56],[-19.6,63.45],[-19.0,63.4],[-18.5,63.42],[-18.0,63.48],[-17.5,63.62],[-17.0,63.76],[-16.5,63.87],[-16.0,64.02],[-15.5,64.15],[-15.0,64.26],[-14.6,64.37],[-14.4,64.42],[-14.1,64.62],[-13.7,64.8],[-13.55,65.0],[-13.5,65.1],[-13.65,65.3],[-13.7,65.5],[-14.2,65.6],[-14.6,65.75],[-14.75,65.95],[-14.9,66.12],[-15.2,66.22],[-15.6,66.3],[-16.0,66.5],[-16.5,66.55],[-16.9,66.2],[-17.5,66.12],[-17.9,66.08],[-18.3,66.2],[-18.7,66.15],[-19.0,66.08],[-19.4,65.9],[-19.6,65.78],[-20.0,65.95],[-20.4,65.92],[-20.6,65.75],[-20.9,65.6],[-21.3,65.85],[-21.6,66.08],[-22.0,66.3],[-22.4,66.45],[-22.9,66.42],[-23.3,66.2],[-23.7,66.0],[-24.0,65.62],[-23.7,65.48],[-23.4,65.42],[-24.1,65.45],[-24.4,65.5],[-23.6,65.25],[-22.5,65.05],[-23.2,64.95],[-23.9,64.9],[-23.5,64.75],[-22.4,64.8],[-22.0,64.55],[-21.9,64.42],[-21.95,64.25],[-22.05,64.1],[-22.4,64.0],[-22.7,63.92]];

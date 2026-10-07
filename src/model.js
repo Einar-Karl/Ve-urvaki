@@ -1,15 +1,20 @@
 // Formatting helpers and the (synthetic) weather and risk model.
 const hDate=h=>new Date(START.getTime()+h*3600e3);
 const hhmm=h=>String(((h%24)+24)%24).padStart(2,"0")+":00";
-const dayLbl=h=>{const d=hDate(h);return `${WD[d.getDay()]} ${d.getDate()}. ${MON[d.getMonth()]}`};
+const dayLbl=h=>{const d=hDate(h);return `${WD[d.getUTCDay()]} ${d.getUTCDate()}. ${MON[d.getUTCMonth()]}`};
 const fmtISK=n=>Math.round(n).toLocaleString("de-DE")+" kr.";
 const fmtM=n=>(n/1e6).toLocaleString("de-DE",{minimumFractionDigits:1,maximumFractionDigits:1})+" m.kr.";
 const pct=x=>Math.round(x*100)+"%";
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const gauss=(h,c,w)=>Math.exp(-(((h-c)/w)**2));
 
-// Synthetic forecast for region r at hour h
-function wx(r,h){const R=REG[r];const s=gauss(h,R.c,R.w);const diurnal=Math.sin((h%24-9)/24*2*Math.PI);
+// Forecast for region r at hour h. Uses live/demo-fixture data from the API when loaded (see live.js),
+// otherwise the built-in synthetic model so index.html still works when opened as a plain file.
+function wx(r,h){
+  if(LIVE&&LIVE[r]){const a=LIVE[r],x=a[clamp(h,0,a.length-1)];
+    return {w:x.w,g:x.g,p:x.p,c:x.c,s:x.s||0,t:x.t,dir:x.dir,sp:x.sp||0};}
+  return wxSynthetic(r,h);}
+function wxSynthetic(r,h){const R=REG[r];const s=gauss(h,R.c,R.w);const diurnal=Math.sin((h%24-9)/24*2*Math.PI);
   const w=R.b+R.a*s+1.2*diurnal;const g=w*1.55+1.5*s;
   const p=Math.max(0,R.p*gauss(h,R.c-2,R.w*.8)+.2+.3*Math.sin(h*.7+R.b));
   const c=clamp(35+60*gauss(h,R.c,R.w*1.4)+15*Math.sin(h*.35+R.b),5,100);
@@ -23,7 +28,9 @@ function risk(t,h,dur){dur=dur||t.dur;const f=TYPES[t.type].f;const parts=[];
     parts.push({k,v:+v.toFixed(1),lo,hi,r:clamp((v-lo)/(hi-lo),0,1)});}
   let surv=1;parts.forEach(p=>surv*=1-p.r*.93);let cancel=clamp(1-surv,.02,.97);
   // lead-time uncertainty pulls toward middle
-  const lead=Math.max(0,h-NOW);const unc=clamp(.04+lead*.0045,.04,.35);
+  // plus model disagreement: wider when the forecast sources differ on gusts
+  let sp=0;for(let i=0;i<=dur;i++)sp=Math.max(sp,wx(t.r,h+i).sp||0);
+  const lead=Math.max(0,h-NOW);const unc=clamp(.04+lead*.0045+sp*.012,.04,.35);
   cancel=cancel*(1-unc*.35)+.5*unc*.35;
   let change=cancel<.2?cancel*1.2+.03:cancel<.55?.32:cancel<.75?.2:.1;
   let go=Math.max(.01,1-cancel-change);const s=go+change+cancel;

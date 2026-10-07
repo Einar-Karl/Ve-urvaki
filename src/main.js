@@ -5,7 +5,7 @@ const setTime=()=>{document.getElementById("tm").textContent=`${dayLbl(hour)} ·
 
 function render(keepScroll){
   setTime();
-  const all=D();drawTop(all);drawMap();drawQueue(all);drawMatrix();drawDetail(all);
+  const all=D();drawStatus();drawTop(all);drawMap();drawQueue(all);drawMatrix();drawDetail(all);drawHistory();
 }
 
 document.getElementById("hour").oninput=e=>{hour=+e.target.value;setTime();drawMap()};
@@ -16,4 +16,10 @@ document.getElementById("play").onclick=e=>{
   btn.classList.add("on");
   timer=setInterval(()=>{hour=(hour+1)%72;document.getElementById("hour").value=hour;setTime();drawMap()},350)};
 
-drawSeason();render();
+$("reCheck").onclick=()=>{$("reCheck").disabled=true;loadHealth(true).finally(()=>{$("reCheck").disabled=false})};
+
+(async function init(){
+  await loadData();
+  hour=clamp(NOW+2,0,71);document.getElementById("hour").value=hour;
+  render();drawConnections();
+})();
