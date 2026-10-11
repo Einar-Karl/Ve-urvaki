@@ -41,10 +41,15 @@ export default {
   attribution: 'Data: © MET Norway, CC BY 4.0',
   configured: () => true,
 
-  async forecast() {
-    const out = {};
+  async forecast({ sites = REGIONS } = {}) {
+    const out = {}, seen = new Map();
     // Sequential on purpose: MET asks clients to be gentle, and results are cached upstream.
-    for (const [id, r] of Object.entries(REGIONS)) out[id] = await one(r);
+    // Sites that round to the same ~1 km cell share one request.
+    for (const [id, r] of Object.entries(sites)) {
+      const cell = `${r.lat.toFixed(2)},${r.lon.toFixed(2)}`;
+      if (!seen.has(cell)) seen.set(cell, await one(r));
+      out[id] = seen.get(cell);
+    }
     return out;
   },
 

@@ -27,10 +27,11 @@ Kinds the app already consumes:
 
 | kind | method | returns |
 |---|---|---|
-| `forecast` | `forecast()` | `{ regionId: { 'YYYY-MM-DDTHH': { g, w, dir, p, c, t } } }` (gust m/s, wind m/s, from-direction °, mm/h, cloud %, °C; UTC hours) |
-| `marine` | `marine()` | `{ regionId: { 'YYYY-MM-DDTHH': { s } } }` (wave height m) |
-| `history` | `history({start,end})` | same shape as `forecast`, with `g` and `p` |
-| `observation` | `observation()` | `{ regions: { regionId: { station, name, km, g, w, dir, t, p, time } } }` |
+| `forecast` | `forecast({ sites })` | `{ siteId: { 'YYYY-MM-DDTHH': { g, w, dir, p, c, t } } }` (gust m/s, wind m/s, from-direction °, mm/h, cloud %, °C; UTC hours) |
+| `marine` | `marine({ sites })` | `{ siteId: { 'YYYY-MM-DDTHH': { s } } }` (wave height m) |
+| `history` | `history({start,end,sites})` | same shape as `forecast`, with `g` and `p` |
+| `observation` | `observation({ sites })` | `{ regions: { siteId: { station, name, km, g, w, dir, t, p, time } } }` |
+| `bookings` | `bookings({ tours, start, end })` | `{ departures: [ { tourId, departure: ISO, pax, capacity, soldOut } ], errors: [] }` |
 | `aurora` | `aurora()` | `[ { t: ISO, kp } ]` |
 | `road` | `road()` | `{ configured, records: [...], byRegion: { regionId: [ { closed, comment, … } ] } }` |
 
@@ -38,7 +39,8 @@ Several `forecast` connectors can run side by side: values are averaged and the 
 between them widens the cancellation-uncertainty figure. Adding a second weather provider is just
 adding a file.
 
-Region ids and coordinates live in `server/lib/regions.js` (mirror of `REG` in `src/data.js`).
+A *site* is one of the 7 regions in `server/lib/regions.js` (mirror of `REG` in `src/data.js`) or a tour
+meeting point (`tour:<id>`, from `config/tours.json`).
 
 ## 2. Push data in
 
@@ -59,8 +61,8 @@ curl -X POST localhost:8080/api/ingest/bookings -H 'content-type: application/js
   European-Excel CSV (`;` separator, `,` decimal mark, UTF-8 BOM).
 * Set `INGEST_TOKEN` and send it as `x-api-key` to require authentication.
 
-Connect Zapier/Make/Power Automate/n8n or a nightly script to these URLs to feed in Bókun,
-Excel sheets or anything else without touching the code.
+Connect Zapier/Make/Power Automate/n8n or a nightly script to these URLs to feed in
+Excel sheets or anything else without touching the code. The dashboard itself posts decisions here.
 
 ## Configuration
 
@@ -72,7 +74,11 @@ Excel sheets or anything else without touching the code.
 | `OPENMETEO_API_KEY` | Paid Open-Meteo key; switches to the `customer-` hosts. Required for commercial use |
 | `VEGAGERDIN_DATEX_URL` / `VEGAGERDIN_AUTH` | Vegagerðin DATEX II service URL (and optional Authorization header) |
 | `IMO_OBS_URL` | Override the IMO observations endpoint |
-| `INGEST_TOKEN`, `INGEST_DIR` | Protect / relocate the ingest store |
+| `DASHBOARD_PASSWORD`, `DASHBOARD_USER` | HTTP Basic login for the dashboard and API (set this in production) |
+| `INGEST_TOKEN`, `INGEST_DIR` | `x-api-key` for external programs posting to `/api/ingest/*`; relocate the store |
+| `BOKUN_ACCESS_KEY`, `BOKUN_SECRET_KEY`, `BOKUN_BASE` | Bókun API credentials / host override |
+| `TOURS_FILE`, `MODEL_FILE` | Alternative paths for `tours.json` / `thresholds.json` |
+| `AUTO_TRAIN` | `1` = retrain thresholds nightly at 03:30 UTC |
 | `CONNECTORS_DIR` | Extra folder of connector files |
 
 `config/stations.json` pins IMO station ids to regions when the feed has no coordinates.
@@ -84,7 +90,9 @@ Excel sheets or anything else without touching the code.
 | Open-Meteo | request/response shapes from public docs; parsing unit-tested | Not yet run against the live API from the build sandbox (egress blocked) |
 | MET Norway | same | Requires identifying User-Agent and visible credit |
 | NOAA Kp | same | Public domain |
+| Bókun bookings | HMAC signing unit-tested against the documented scheme; response fields **unverified** | Needs `BOKUN_ACCESS_KEY` / `BOKUN_SECRET_KEY` and `bokunProductId` per tour |
 | IMO observations | endpoint URL from an open-source client; field names **unverified** | Run `npm run check` once: it prints a sample record so `ALIAS` in `connectors/imo.js` can be confirmed |
 | Vegagerðin DATEX II | parser unit-tested on a hand-written sample; **URL not set** | Set `VEGAGERDIN_DATEX_URL` from vegagerdin.is |
 
 Run `npm run check` on any machine with internet access to get the real answer for each.
+Full go-live steps: [SETUP-ARCTIC.md](SETUP-ARCTIC.md).

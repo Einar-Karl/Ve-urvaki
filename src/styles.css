@@ -214,3 +214,11 @@ table.conn td{padding-top:10px;padding-bottom:10px}
 .mono{font-family:var(--mono);font-size:11px;color:var(--muted)}
 code{font-family:var(--mono);font-size:12px;background:var(--sunk);padding:1px 5px;border-radius:4px}
 button:disabled{opacity:.6;cursor:progress}
+
+.decide{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.decide .who{font:500 12.5px var(--body);border:1px solid var(--line-strong);border-radius:var(--radius-sm);padding:7px 10px;background:var(--panel);color:var(--ink);min-width:150px;flex:1 1 150px}
+.decide .btn[data-o="cancelled"]:hover{border-color:var(--cancel);color:var(--cancel)}
+.decide .btn[data-o="ran"]:hover{border-color:var(--go);color:var(--go)}
+.decide .btn:disabled,.decide .who:disabled{opacity:.5;cursor:not-allowed}
+.warnbox{margin:12px 18px 0;padding:10px 14px;border:1px solid var(--change);background:var(--change-bg);border-radius:var(--radius-sm);font-size:12.5px}
+.warnbox ul{margin:6px 0 0;padding-left:18px}

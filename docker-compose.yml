@@ -1,0 +1,13 @@
+# docker compose up -d --build
+# data/    recorded decisions and pushed bookings (BACK THIS UP: it is the training data)
+# config/  tours.json (edit this), thresholds.json (written by training), stations.json
+services:
+  vedurvaki:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config

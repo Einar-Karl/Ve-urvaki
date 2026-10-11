@@ -23,13 +23,20 @@ function wxSynthetic(r,h){const R=REG[r];const s=gauss(h,R.c,R.w);const diurnal=
   const dir=(140+90*clamp((h-R.c)/R.w,-1,1.4)+360)%360;
   return {w:+w.toFixed(1),g:+g.toFixed(1),p:+p.toFixed(1),c:Math.round(c),s:+sw.toFixed(1),t:+t.toFixed(1),dir};}
 
-function risk(t,h,dur){dur=dur||t.dur;const f=TYPES[t.type].f;const parts=[];
-  for(const k in f){const [lo,hi]=f[k];let v=-1e9;for(let i=0;i<=dur;i++){const x=wx(t.r,h+i)[k];if(x>v)v=x}
+// A tour is forecast at its own meeting point when the server provides it ("tour:<id>"), else at its region.
+const siteOf=t=>LIVE&&LIVE["tour:"+t.id]?"tour:"+t.id:t.r;
+// Risk factors for a tour, in priority order: learned from decisions (t.f) > manual limits from
+// config/tours.json (t.f0) > the tour type's defaults.
+const tourF=t=>t.f||t.f0||TYPES[t.type].f;
+const capOf=d=>d.cap||d.t.cap;
+
+function risk(t,h,dur){dur=dur||t.dur;const f=tourF(t);const parts=[];
+  for(const k in f){const [lo,hi]=f[k];let v=-1e9;for(let i=0;i<=dur;i++){const x=wx(siteOf(t),h+i)[k];if(x>v)v=x}
     parts.push({k,v:+v.toFixed(1),lo,hi,r:clamp((v-lo)/(hi-lo),0,1)});}
   let surv=1;parts.forEach(p=>surv*=1-p.r*.93);let cancel=clamp(1-surv,.02,.97);
   // lead-time uncertainty pulls toward middle
   // plus model disagreement: wider when the forecast sources differ on gusts
-  let sp=0;for(let i=0;i<=dur;i++)sp=Math.max(sp,wx(t.r,h+i).sp||0);
+  let sp=0;for(let i=0;i<=dur;i++)sp=Math.max(sp,wx(siteOf(t),h+i).sp||0);
   const lead=Math.max(0,h-NOW);const unc=clamp(.04+lead*.0045+sp*.012,.04,.35);
   cancel=cancel*(1-unc*.35)+.5*unc*.35;
   let change=cancel<.2?cancel*1.2+.03:cancel<.55?.32:cancel<.75?.2:.1;

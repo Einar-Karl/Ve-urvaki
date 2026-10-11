@@ -1,0 +1,198 @@
+{
+  "demo": true,
+  "_comment": "TEMPLATE with example tours. Replace with Arctic Adventures' real tours, then set demo to false. See docs/SETUP-ARCTIC.md step 5. Times are local Iceland time (= UTC). region is one of rvk,rnes,west,hl,south,se,north (used for the map wind field and as fallback). lat/lon are the meeting/activity point used for the forecast. marine is an offshore point for boat tours. bokunProductId links the tour to Bokun.",
+  "tours": [
+    {
+      "id": 1,
+      "name": "Vélsleðar á Langjökli",
+      "type": "snow",
+      "region": "hl",
+      "lat": 64.6,
+      "lon": -20.2,
+      "departures": [
+        "10:00",
+        "13:00"
+      ],
+      "durationHours": 3,
+      "capacity": 48,
+      "priceISK": 39900,
+      "bokunProductId": null
+    },
+    {
+      "id": 2,
+      "name": "Jöklaganga · Sólheimajökull",
+      "type": "hike",
+      "region": "south",
+      "lat": 63.53,
+      "lon": -19.35,
+      "departures": [
+        "09:00",
+        "13:00"
+      ],
+      "durationHours": 3,
+      "capacity": 64,
+      "priceISK": 16900,
+      "bokunProductId": null
+    },
+    {
+      "id": 3,
+      "name": "Íshellir · Breiðamerkurjökull",
+      "type": "cave",
+      "region": "se",
+      "lat": 64.08,
+      "lon": -16.3,
+      "departures": [
+        "11:00"
+      ],
+      "durationHours": 4,
+      "capacity": 54,
+      "priceISK": 24900,
+      "bokunProductId": null
+    },
+    {
+      "id": 4,
+      "name": "Yfirborðsköfun í Silfru",
+      "type": "snork",
+      "region": "rvk",
+      "lat": 64.26,
+      "lon": -21.12,
+      "departures": [
+        "09:00",
+        "13:00"
+      ],
+      "durationHours": 3,
+      "capacity": 24,
+      "priceISK": 21900,
+      "bokunProductId": null
+    },
+    {
+      "id": 5,
+      "name": "Norðurljós frá Reykjavík",
+      "type": "aurora",
+      "region": "rvk",
+      "lat": 64.02,
+      "lon": -21.6,
+      "departures": [
+        "21:00"
+      ],
+      "durationHours": 4,
+      "capacity": 150,
+      "priceISK": 9900,
+      "bokunProductId": null
+    },
+    {
+      "id": 6,
+      "name": "Hvalaskoðun · Reykjavík",
+      "type": "whale",
+      "region": "rvk",
+      "lat": 64.17,
+      "lon": -22.05,
+      "departures": [
+        "13:00"
+      ],
+      "durationHours": 3,
+      "capacity": 90,
+      "priceISK": 13900,
+      "bokunProductId": null,
+      "marine": {
+        "lat": 64.28,
+        "lon": -22.1
+      }
+    },
+    {
+      "id": 7,
+      "name": "Ofurjeppi í Þórsmörk",
+      "type": "jeep",
+      "region": "south",
+      "lat": 63.7,
+      "lon": -19.5,
+      "departures": [
+        "08:00"
+      ],
+      "durationHours": 9,
+      "capacity": 24,
+      "priceISK": 34900,
+      "bokunProductId": null
+    },
+    {
+      "id": 8,
+      "name": "Flúðasigling í Hvítá",
+      "type": "raft",
+      "region": "south",
+      "lat": 64.16,
+      "lon": -20.4,
+      "departures": [
+        "10:00"
+      ],
+      "durationHours": 4,
+      "capacity": 28,
+      "priceISK": 14900,
+      "bokunProductId": null
+    },
+    {
+      "id": 9,
+      "name": "Fjórhjól á Reykjanesi",
+      "type": "atv",
+      "region": "rnes",
+      "lat": 63.87,
+      "lon": -22.35,
+      "departures": [
+        "12:00"
+      ],
+      "durationHours": 2,
+      "capacity": 20,
+      "priceISK": 22900,
+      "bokunProductId": null
+    },
+    {
+      "id": 10,
+      "name": "Snæfellsjökull · jöklaganga",
+      "type": "hike",
+      "region": "west",
+      "lat": 64.8,
+      "lon": -23.75,
+      "departures": [
+        "10:00"
+      ],
+      "durationHours": 5,
+      "capacity": 16,
+      "priceISK": 27900,
+      "bokunProductId": null
+    },
+    {
+      "id": 11,
+      "name": "Hvalaskoðun · Húsavík",
+      "type": "whale",
+      "region": "north",
+      "lat": 66.05,
+      "lon": -17.34,
+      "departures": [
+        "10:00"
+      ],
+      "durationHours": 3,
+      "capacity": 60,
+      "priceISK": 14900,
+      "bokunProductId": null,
+      "marine": {
+        "lat": 66.1,
+        "lon": -17.25
+      }
+    },
+    {
+      "id": 12,
+      "name": "Norðurljós við Mývatn",
+      "type": "aurora",
+      "region": "north",
+      "lat": 65.62,
+      "lon": -17,
+      "departures": [
+        "21:00"
+      ],
+      "durationHours": 3,
+      "capacity": 40,
+      "priceISK": 12900,
+      "bokunProductId": null
+    }
+  ]
+}
+

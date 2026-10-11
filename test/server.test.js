@@ -90,7 +90,7 @@ test('fusion: mean gust, spread between sources, hold-last on gaps, marine waves
   const keys = ['2026-10-07T00', '2026-10-07T01', '2026-10-07T02'];
   const a = { id: 'a', data: { rvk: { [keys[0]]: { g: 10, w: 6, dir: 200, p: 0, c: 50, t: 5 }, [keys[1]]: { g: 20, w: 12, dir: 210, p: 1, c: 60, t: 5 } } } };
   const b = { id: 'b', data: { rvk: { [keys[0]]: { g: 14, w: 8, dir: 190, p: 0.2, c: 40, t: 6 } } } };
-  const f = fuse(keys, [a, b], { rvk: { [keys[0]]: { s: 1.5 } } });
+  const f = fuse(keys, [a, b], { rvk: { [keys[0]]: { s: 1.5 } } }, ['rvk', 'hl']);
   assert.equal(f.rvk[0].g, 12); assert.equal(f.rvk[0].sp, 4); assert.equal(f.rvk[0].s, 1.5);
   assert.equal(f.rvk[1].g, 20); assert.equal(f.rvk[1].sp, 0);
   assert.equal(f.rvk[2].g, 20);          // gap -> held
@@ -130,18 +130,20 @@ test('server: with every provider unreachable /api/forecast falls back to labell
 
 test('server: fuses two live sources and reports per-source status', async () => {
   clearCache();
-  const ids = Object.keys(REGIONS);
-  const omHour = { hourly: { time: Array.from({ length: 96 }, (_, i) => new Date(Date.UTC(2026, 9, 7) + i * 3600e3).toISOString().slice(0, 16)), wind_gusts_10m: Array(96).fill(18), wind_speed_10m: Array(96).fill(11), wind_direction_10m: Array(96).fill(200), precipitation: Array(96).fill(0), cloud_cover: Array(96).fill(50), temperature_2m: Array(96).fill(4) } };
+  const n = u => new URL(u).searchParams.get('latitude').split(',').length;
+  const omHour = { hourly: { time: Array.from({ length: 96 }, (_, i) => new Date(new Date().setUTCHours(0, 0, 0, 0) + i * 3600e3).toISOString().slice(0, 16)), wind_gusts_10m: Array(96).fill(18), wind_speed_10m: Array(96).fill(11), wind_direction_10m: Array(96).fill(200), precipitation: Array(96).fill(0), cloud_cover: Array(96).fill(50), temperature_2m: Array(96).fill(4) } };
   setFetch(async u => {
     const url = String(u);
-    if (url.includes('marine-api')) return json(ids.filter(i => REGIONS[i].marine).map(() => ({ hourly: { time: omHour.hourly.time, wave_height: Array(96).fill(1.2) } })));
-    if (url.includes('api.open-meteo.com')) return json(ids.map(() => omHour));
+    if (url.includes('marine-api')) return json(Array.from({ length: n(url) }, () => ({ hourly: { time: omHour.hourly.time, wave_height: Array(96).fill(1.2) } })));
+    if (url.includes('api.open-meteo.com')) return json(Array.from({ length: n(url) }, () => omHour));
     throw new Error('blocked'); // MET Norway down
   });
   await withServer(async base => {
     const j = await (await fetch(`${base}/api/forecast?mode=live`)).json();
     assert.equal(j.mode, 'live');
     assert.equal(j.regions.rvk[5].g, 18); assert.equal(j.regions.rvk[5].s, 1.2); assert.equal(j.regions.hl[5].s, 0);
+    assert.ok(j.regions['tour:2'], 'each configured tour is forecast at its own point');
+    assert.equal(j.regions['tour:2'].length, 96);
     const st = Object.fromEntries(j.sources.map(s => [s.id, s.ok]));
     assert.equal(st.openmeteo, true); assert.equal(st.metno, false);
   });

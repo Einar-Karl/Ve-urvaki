@@ -44,10 +44,24 @@ const TOURS=[
  {id:12,name:"Norðurljós við Mývatn",type:"aurora",r:"north",ll:[-17.0,65.62],dep:[21],dur:3,pax:[28,30,34],cap:40,price:12900},
 ];
 
-// Departures list (one entry per tour, day and departure time from NOW onwards). Rebuilt when NOW changes.
+// Demo guest numbers per tour (day 0..2); only used when no real bookings are available.
+const DEFAULT_PAX=Object.fromEntries(TOURS.map(t=>[t.id,t.pax]));
+let BOOKINGS=null;   // /api/bookings payload; set by live.js
+
+// Departures (one per tour, day and departure time from NOW onwards). Rebuilt when data loads.
+// With real bookings (Bókun or pushed snapshots) every departure comes from them; otherwise demo numbers.
 const DEPS=[];
 function buildDeps(){
   DEPS.length=0;
+  if(BOOKINGS&&BOOKINGS.mode&&BOOKINGS.mode!=="none"){
+    BOOKINGS.departures.forEach(b=>{
+      const t=TOURS.find(x=>String(x.id)===String(b.tourId));if(!t)return;
+      const h=Math.round((Date.parse(b.departure)-START.getTime())/3600e3);
+      if(h<NOW-1||h>=72||!(b.pax>0))return;
+      DEPS.push({key:`${t.id}-${h}`,t,h,pax:b.pax,cap:b.capacity||t.cap});
+    });
+    return;
+  }
   TOURS.forEach(t=>[0,1,2].forEach(d=>{if(!t.pax[d])return;t.dep.forEach((hh,i)=>{const h=d*24+hh;if(h<NOW-1)return;
     const pax=Math.round(t.pax[d]/t.dep.length*(i?0.85:1.15));DEPS.push({key:`${t.id}-${h}`,t,h,pax})})}));
 }

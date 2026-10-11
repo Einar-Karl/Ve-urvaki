@@ -92,8 +92,8 @@ function drawTop(all){
 
 // ---------- detail
 function chartFor(d){
-  const t=d.t,f=TYPES[t.type].f,main=d.R.parts[0].k;const [lo,hi]=f[main];
-  const h0=Math.max(0,d.h-18),h1=Math.min(71,d.h+t.dur+18);const vals=[];for(let h=h0;h<=h1;h++)vals.push([h,wx(t.r,h)[main]]);
+  const t=d.t,f=tourF(t),main=d.R.parts[0].k;const [lo,hi]=f[main];
+  const h0=Math.max(0,d.h-18),h1=Math.min(71,d.h+t.dur+18);const vals=[];for(let h=h0;h<=h1;h++)vals.push([h,wx(siteOf(t),h)[main]]);
   const vmax=Math.max(hi*1.15,...vals.map(v=>v[1]))*1.05;const W=560,H=200,L=40,Rr=10,T=12,B=28;
   const x=h=>L+(h-h0)/(h1-h0)*(W-L-Rr),y=v=>T+(1-v/vmax)*(H-T-B);
   const unc=d.R.unc;
@@ -122,28 +122,29 @@ function messages(d,alt){
   return M[lang];
 }
 function drawDetail(all){
+  if(!all.length){document.getElementById("brottfor").innerHTML=`<div class="ph"><h2>Brottför</h2></div><div class="dsec"><p class="note">Engar bókaðar brottfarir næstu 72 klst.${BOOKINGS&&BOOKINGS.mode==="live"?" (samkvæmt Bókun)":""}</p></div>`;return}
   if(!selKey||!all.find(d=>d.key===selKey))selKey=all.slice().sort((a,b)=>b.R.cancel-a.R.cancel)[0].key;
   const d=all.find(x=>x.key===selKey),t=d.t,R=d.R;
   const rev=d.pax*t.price;const atRisk=rev*R.cancel;
   const nexts=all.filter(x=>x.t.id===t.id&&x.h>d.h&&x.R.status==="go").sort((a,b)=>a.h-b.h);
-  const next=nexts[0];const alts=all.filter(x=>x.t.id!==t.id&&Math.abs(x.h-d.h)<=6&&x.R.status==="go"&&x.t.cap-x.pax>4).sort((a,b)=>b.t.price-a.t.price);
+  const next=nexts[0];const alts=all.filter(x=>x.t.id!==t.id&&Math.abs(x.h-d.h)<=6&&x.R.status==="go"&&capOf(x)-x.pax>4).sort((a,b)=>b.t.price-a.t.price);
   const alt=alts[0];
-  const seats=next?Math.max(0,next.t.cap-next.pax):0;
+  const seats=next?Math.max(0,capOf(next)-next.pax):0;
   const rebook=next?Math.min(d.pax,Math.round(seats*0.9)):0;
-  const altSeats=alt?Math.min(d.pax-rebook,alt.t.cap-alt.pax):0;
+  const altSeats=alt?Math.min(d.pax-rebook,capOf(alt)-alt.pax):0;
   const recovered=rebook*t.price*.92+altSeats*(alt?alt.t.price:0)*.35;
   const acts=[];
   if(R.status==="go")acts.push({h:"Engin aðgerð þarf",d:"Spáin er innan marka þessarar ferðar. Vöktun heldur áfram og þú færð tilkynningu ef staðan breytist."});
   else{
     acts.push({h:"Senda gestum snemmbúna viðvörun",d:`${d.pax} gestir fá skilaboð á sínu tungumáli (SMS + tölvupóstur) með valkostum. Reynsla sýnir að 70% velja innan 2 klst.`,b:"Senda"});
     acts.push(next?{h:`Bjóða endurbókun · ${dayLbl(next.h)} ${hhmm(next.h)}`,d:`${seats} laus sæti, ${pct(next.R.go)} líkur á að sú ferð fari fram. Sætin eru tekin frá í 6 klst.`,b:"Taka frá"}:{h:"Bjóða inneign",d:"Engin örugg brottför innan 72 klst. Inneign með 18 mánaða gildistíma heldur tekjunum inni.",b:"Bjóða"});
-    if(alt)acts.push({h:`Bjóða varaferð · ${alt.t.name}`,d:`${alt.t.cap-alt.pax} laus sæti ${hhmm(alt.h)}, ${pct(alt.R.go)} líkur á að hún fari fram. Mismunur á verði: ${fmtISK(alt.t.price-t.price)}.`,b:"Bjóða"});
+    if(alt)acts.push({h:`Bjóða varaferð · ${alt.t.name}`,d:`${capOf(alt)-alt.pax} laus sæti ${hhmm(alt.h)}, ${pct(alt.R.go)} líkur á að hún fari fram. Mismunur á verði: ${fmtISK(alt.t.price-t.price)}.`,b:"Bjóða"});
     acts.push({h:"Láta leiðsögn og bílstjóra vita",d:"Vaktaplan uppfærist sjálfkrafa þegar ákvörðun er staðfest.",b:"Undirbúa"});
   }
   const fx=R.parts.map(p=>`<tr><td>${FL[p.k][0]}</td><td class="num ${p.v>=p.lo?"over":""}">${String(p.v).replace(".",",")} ${FL[p.k][1]}</td><td class="num">${p.lo}–${p.hi}</td><td class="num"><span class="mini"><i style="width:${p.r*100}%;background:${p.r>.6?"var(--cancel)":p.r>.2?"var(--change)":"var(--go)"}"></i></span></td></tr>`).join("");
   const el=document.getElementById("brottfor");
   el.innerHTML=`
-   <div class="ph"><div><h2>${t.name}</h2><span class="s">${dayLbl(d.h)} · kl. ${hhmm(d.h)}–${hhmm(d.h+t.dur)} · ${TYPES[t.type].n} · ${REG[t.r].n} · ${d.pax}/${t.cap} sæti bókuð</span></div>
+   <div class="ph"><div><h2>${t.name}</h2><span class="s">${dayLbl(d.h)} · kl. ${hhmm(d.h)}–${hhmm(d.h+t.dur)} · ${TYPES[t.type].n} · ${REG[t.r].n} · ${d.pax}/${capOf(d)} sæti bókuð</span></div>
      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="pill p-${R.status}">${STAT[R.status]}</span><span class="pill" style="background:var(--sunk);color:var(--muted)">Ákvörðunarfrestur ${dayLbl(deadline(d.h))} ${hhmm(deadline(d.h))}</span></div></div>
    <div class="detail">
     <div class="dsec">
@@ -156,7 +157,7 @@ function drawDetail(all){
       <div><h3>Spá yfir ferðartímann · ráðandi þáttur</h3>${chartFor(d)}</div>
       <div><h3>Hvað ræður spánni</h3>
        <table class="fx"><tr><th>Þáttur</th><th class="num">Hámark í ferð</th><th class="num">Áhættubil</th><th class="num">Vægi</th></tr>${fx}</table>
-       <p class="note" style="margin-top:6px">${extraNotes(d)}Áhættumörk koma úr stillingum ferðartegundar og lærast af aflýsingasögu þegar útkomugögn hafa verið send inn (sjá Tengingar).</p></div>
+       <p class="note" style="margin-top:6px">${extraNotes(d)}${modelNote(t)}</p></div>
     </div>
     <div class="dsec">
       <div><h3>Fjárhagsleg áhrif</h3>
@@ -167,8 +168,9 @@ function drawDetail(all){
         <tr><td>Varaferðir (áætlað)</td><td class="num">${altSeats} gestir</td></tr>
         <tr><td><b>Endurheimt með Veðurvaka</b></td><td class="num" style="color:var(--go);font-weight:600">${fmtISK(R.status==="go"?0:Math.min(recovered,rev)*R.cancel)}</td></tr>
        </table></div>
+      ${decisionBlock(d)}
       <div><h3>Tillögur að aðgerðum</h3>
-       <div class="actions">${acts.map((a,i)=>{const k=selKey+"-"+i;const dn=done.has(k);return `<div class="act"><span class="no">${i+1}</span><div><div class="h">${a.h}</div><div class="d">${a.d}</div></div>${a.b?`<button class="btn ${dn?"done":""}" data-k="${k}">${dn?"Gert ✓":a.b}</button>`:""}</div>`}).join("")}</div></div>
+       <div class="actions">${acts.map((a,i)=>{const k=selKey+"-"+i;const dn=done.has(k);return `<div class="act"><span class="no">${i+1}</span><div><div class="h">${a.h}</div><div class="d">${a.d}</div></div>${a.b?`<button class="btn ${dn?"done":""}" data-k="${k}">${dn?"Gert ✓":a.b}</button>`:""}</div>`}).join("")}</div><p class="note" style="margin-top:6px">Hnapparnir merkja aðeins verkið sem unnið. SMS, tölvupóstur og breytingar í Bókun eru ekki tengd enn.</p></div>
       ${R.status!=="go"?`<div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3 style="margin:0">Skilaboð til gesta · forskoðun</h3>
         <div class="tabs" role="group" aria-label="Tungumál">${["en","de","is"].map(l=>`<button aria-pressed="${l===lang}" data-l="${l}">${l.toUpperCase()}</button>`).join("")}</div></div>
         <div class="msg" style="margin-top:8px"><div class="hd"><span>SMS + tölvupóstur · ${d.pax} viðtakendur</span><span>Sendist ${hhmm(Math.max(NOW+1,deadline(d.h)-10))} ef samþykkt</span></div>${messages(d,{next,alt})}</div></div>`:""}
@@ -177,6 +179,7 @@ function drawDetail(all){
    </div>`;
   el.querySelectorAll(".act .btn").forEach(b=>b.onclick=()=>{done.add(b.dataset.k);drawDetail(D())});
   el.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{lang=b.dataset.l;drawDetail(D())});
+  el.querySelectorAll(".decide .btn").forEach(b=>b.onclick=()=>recordOutcome(d,b.dataset.o));
 }
 
 // ---------- status, notes, history, connections
@@ -193,7 +196,9 @@ function drawStatus(){
   $("st-live").className="live"+(live?"":" off");
   $("st-live").innerHTML=`<i></i><b>${live?"Spá sótt "+hm+" (UTC)":m==="demo"?"Sýnigögn · engin tenging við veðurþjónustur":"Innbyggð sýnigögn · enginn netþjónn"}</b>`;
   $("st-models").textContent=live?"Heimildir: "+ok.join(" + "):"Veðurlíkan: tilbúin sýnigögn";
-  $("st-book").textContent="Bókanir og verð: sýnigögn (engin tenging við bókunarkerfi)";
+  const bm=BOOKINGS&&BOOKINGS.mode,bt=BOOKINGS&&BOOKINGS.fetchedAt?new Date(BOOKINGS.fetchedAt):null;
+  $("st-book").textContent=(bm==="live"?`Bókanir: Bókun · sótt ${String(bt.getUTCHours()).padStart(2,"0")}:${String(bt.getUTCMinutes()).padStart(2,"0")}`
+    :bm==="ingested"?"Bókanir: innsendar (CSV / API)":"Bókanir: sýnigögn (engin tenging við bókunarkerfi)")+(TOURS_DEMO?" · ferðalisti: sýnidæmi":"");
   const d=hDate(NOW);$("st-date").textContent=`${IS_DAY[d.getUTCDay()]} ${d.getUTCDate()}. ${IS_MON[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
   const b=$("badge");b.className="proto"+(live?" live":"");
   b.textContent=live?"Beint · veðurgögn":m==="demo"?"Sýnigögn":"Prótótýpa · sýnigögn";
@@ -205,7 +210,7 @@ function drawStatus(){
 
 function extraNotes(d){
   const out=[],t=d.t;
-  const o=OBS&&OBS[t.r];
+  const o=OBS&&(OBS[siteOf(t)]||OBS[t.r]);
   if(o&&(o.g!=null||o.w!=null))out.push(`Mæling núna${o.name?" ("+esc(o.name)+(o.km!=null?", "+o.km+" km":"")+")":""}: ${o.g!=null?"hviður "+String(o.g).replace(".",",")+" m/s":"vindur "+String(o.w).replace(".",",")+" m/s"}.`);
   if(t.type==="aurora"&&KP&&KP.length){
     const at=hDate(d.h).getTime();const k=KP.reduce((b,x)=>Math.abs(new Date(x.t)-at)<Math.abs(new Date(b.t)-at)?x:b);
@@ -231,12 +236,12 @@ function drawHistory(){
   const dl=i=>{const d=new Date(start.getTime()+i*86400e3);return `${d.getUTCDate()}. ${MON[d.getUTCMonth()]}`};
   $("sagasub").textContent=`${dl(0)} – ${dl(days-1)} · ${HIST.mode==="live"?"ERA5 endurgreining (Open-Meteo)":"sýnigögn"} · dagtími ferðar`;
   const tourId=parseInt(selKey)||1,sel=TOURS.find(t=>t.id===tourId)||TOURS[0];
-  const rows=TOURS.map(t=>{const [lo,hi]=TYPES[t.type].f.g,[a,b]=tourWindow(t),dm=dailyMax(t.r,a,b);
+  const rows=TOURS.map(t=>{const [lo,hi]=tourF(t).g,[a,b]=tourWindow(t),dm=dailyMax(siteOf(t),a,b);
     return {t,lo,hi,over:dm.filter(v=>v!=null&&v>=hi).length,warn:dm.filter(v=>v!=null&&v>=lo&&v<hi).length,n:dm.filter(v=>v!=null).length}}).sort((x,y)=>y.over-x.over||y.warn-x.warn);
   const bars=rows.map(r=>`<tr class="${r.t.id===sel.id?"sel":""}"><td>${esc(r.t.name)}</td><td class="num">${r.over} af ${r.n}</td>
     <td><span class="hbar"><i style="width:${r.over/Math.max(1,r.n)*100}%;background:var(--cancel)"></i><i style="width:${r.warn/Math.max(1,r.n)*100}%;background:var(--change)"></i></span></td></tr>`).join("");
   // chart for the selected tour
-  const [lo,hi]=TYPES[sel.type].f.g,[wa,wb]=tourWindow(sel),dm=dailyMax(sel.r,wa,wb);
+  const [lo,hi]=tourF(sel).g,[wa,wb]=tourWindow(sel),dm=dailyMax(siteOf(sel),wa,wb);
   const W=520,H=190,L=34,B=26,T=12,vmax=Math.max(hi*1.2,...dm.filter(v=>v!=null))*1.05,bw=(W-L-8)/Math.max(1,dm.length);
   const y=v=>T+(1-v/vmax)*(H-T-B);
   let c=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Hæsta hviða á dag, ${esc(sel.name)}">`;
@@ -247,7 +252,7 @@ function drawHistory(){
   c+=`<line x1="${L}" x2="${W-8}" y1="${y(lo)}" y2="${y(lo)}" stroke="var(--change)" stroke-dasharray="4 3"/><line x1="${L}" x2="${W-8}" y1="${y(hi)}" y2="${y(hi)}" stroke="var(--cancel)" stroke-dasharray="4 3"/>
     <text x="${W-10}" y="${y(hi)-4}" text-anchor="end" font-family="IBM Plex Sans,sans-serif" font-size="9" fill="var(--cancel)">Aflýsingarmörk ${hi}</text></svg>`;
   // facts across all regions
-  let peak={g:-1};for(const r in HIST.regions){HIST.regions[r].g.forEach((v,i)=>{if(v!=null&&v>peak.g)peak={g:v,r,i}})}
+  let peak={g:-1};for(const r in HIST.regions){if(!REG[r])continue;HIST.regions[r].g.forEach((v,i)=>{if(v!=null&&v>peak.g)peak={g:v,r,i}})}
   const sr=rows.find(r=>r.t.id===sel.id);
   const kv=[["Tímabil",`${dl(0)} – ${dl(days-1)}`],["Valin ferð",esc(sel.name)],["Dagar yfir aflýsingarmörkum",`${sr.over} af ${sr.n}`],["Dagar í áhættubili",`${sr.warn} af ${sr.n}`],
     ["Mesta hviða á landinu",peak.g<0?"–":`${String(Math.round(peak.g*10)/10).replace(".",",")} m/s · ${REG[peak.r].n}, ${dl(Math.floor(peak.i/24))}`],["Heimild",HIST.mode==="live"?"Open-Meteo / ERA5":"Sýnigögn"]];
@@ -260,8 +265,29 @@ function drawConnections(){
   const el=$("tengbody");if(!el)return;
   const mode=FC_META.mode;
   $("tengsub").textContent=mode==="live"?"Veðurgögn sótt beint":mode==="demo"?"Sýnigögn í notkun: "+(FC_META.demoReason||""):"Enginn netþjónn tengdur";
+  const warn=TOUR_WARNINGS.length?`<div class="warnbox"><b>Athugasemdir um config/tours.json</b><ul>${TOUR_WARNINGS.map(w=>`<li>${esc(w)}</li>`).join("")}</ul></div>`:"";
   if(!HEALTH){el.innerHTML=`<p class="note" style="padding:14px 18px">Netþjónn er ekki í gangi. Keyrðu <code>npm start</code> og opnaðu síðuna í gegnum hann til að sjá stöðu tenginga.</p>`;return}
   const pill={ok:["p-go","Tengt"],error:["p-cancel","Villa"],unconfigured:["p-change","Ekki stillt"]};
-  el.innerHTML=`<table class="fx conn"><thead><tr><th>Heimild</th><th>Tegund</th><th>Staða</th><th>Nánar</th><th>Leyfi</th></tr></thead><tbody>${HEALTH.map(c=>{const [cl,tx]=pill[c.status]||pill.error;
+  el.innerHTML=warn+`<table class="fx conn"><thead><tr><th>Heimild</th><th>Tegund</th><th>Staða</th><th>Nánar</th><th>Leyfi</th></tr></thead><tbody>${HEALTH.map(c=>{const [cl,tx]=pill[c.status]||pill.error;
     return `<tr><td><b>${esc(c.label)}</b></td><td>${c.kinds.map(esc).join(", ")}</td><td><span class="pill ${cl}">${tx}</span>${c.ms!=null&&c.status==="ok"?` <span class="mono">${c.ms} ms</span>`:""}</td><td class="det">${esc(c.detail)}</td><td class="det">${esc(c.license)}</td></tr>`}).join("")}</tbody></table>`;
+}
+
+// ---------- learned thresholds and decision log
+function modelNote(t){
+  const m=MODEL&&MODEL.tours&&MODEL.tours[t.id];
+  if(m&&m.status==="learned")return `Áhættumörk lærð af ${m.n} ákvörðunum (50% aflýsingarlíkur við ${String(m.p50).replace(".",",")} m/s hviður). `;
+  return `Áhættumörk eru ${t.f0?"stillt handvirkt":"sjálfgefin"}${m?` (${m.n} ákvarðanir skráðar, ${m.cancelled} aflýsingar; þarf fleiri til að læra)`:""}; þau lærast af ákvörðunum vaktstjóra. `;
+}
+function decisionBlock(d){
+  const iso=depIso(d),last=DECISIONS[d.t.id+"|"+iso],off=FC_META.mode==="embedded"?" disabled":"";
+  const lab={ran:"Fer fram",cancelled:"Aflýst",changed:"Breytt / fært"};
+  let who="";try{who=localStorage.getItem("vv-who")||""}catch(e){}
+  const when=last?new Date(last.decidedAt||last.receivedAt):null;
+  const hint=FC_META.mode==="embedded"?"Netþjónn þarf að vera í gangi til að skrá ákvörðun."
+    :FC_META.mode==="demo"?"Sýnigögn: ákvörðun er skráð en ekki notuð til þjálfunar."
+    :"Skráð með spánni sem sést á skjánum og notuð til að læra áhættumörkin.";
+  return `<div><h3>Ákvörðun vaktstjóra</h3>
+    <div class="decide"><input id="who" class="who" placeholder="Nafn vaktstjóra" value="${esc(who)}" aria-label="Nafn vaktstjóra"${off}>
+    <button class="btn" data-o="cancelled"${off}>Staðfesta aflýsingu</button><button class="btn" data-o="ran"${off}>Staðfesta brottför</button><button class="btn" data-o="changed"${off}>Breyting</button></div>
+    <p class="note" style="margin-top:6px">${last?`Skráð: <b>${lab[last.outcome]||esc(last.outcome)}</b>${last.decidedBy?" · "+esc(last.decidedBy):""} · ${String(when.getUTCHours()).padStart(2,"0")}:${String(when.getUTCMinutes()).padStart(2,"0")}. `:"Engin ákvörðun skráð. "}${hint}</p></div>`;
 }

@@ -4,19 +4,21 @@ import { memo } from '../lib/cache.js';
 import { utcMidnight } from '../lib/time.js';
 import { loadConnectors, withKind } from '../registry.js';
 import { demoHistory } from './demo.js';
+import { REGIONS } from '../lib/regions.js';
+import { sitesSignature } from '../lib/sites.js';
 
 const DAYS = 30;
 const ymd = d => d.toISOString().slice(0, 10);
 
-export async function getHistory({ mode = 'auto', now = new Date() } = {}) {
+export async function getHistory({ mode = 'auto', now = new Date(), sites } = {}) {
   if (mode === 'demo') return demoHistory(now);
   const endD = new Date(utcMidnight(now).getTime() - 6 * 86400e3);
   const startD = new Date(endD.getTime() - (DAYS - 1) * 86400e3);
   try {
-    return await memo(`history:${ymd(endD)}`, 6 * 3600e3, async () => {
+    return await memo(`history:${ymd(endD)}:${sitesSignature(sites || REGIONS)}`, 6 * 3600e3, async () => {
       const c = withKind(await loadConnectors(), 'history')[0];
       if (!c) throw new Error('no history connector');
-      const data = await c.history({ start: ymd(startD), end: ymd(endD) });
+      const data = await c.history({ start: ymd(startD), end: ymd(endD), sites: sites || REGIONS });
       const regions = {};
       for (const [id, byHour] of Object.entries(data)) {
         const keys = Object.keys(byHour).sort();

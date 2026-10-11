@@ -4,17 +4,18 @@
 // uncertainty with it, so two models that disagree produce a less confident cancel call.
 import { memo } from '../lib/cache.js';
 import { hourKeys, utcMidnight, round } from '../lib/time.js';
-import { REGIONS } from '../lib/regions.js';
 import { loadConnectors, withKind } from '../registry.js';
 import { demoForecast } from './demo.js';
+import { REGIONS } from '../lib/regions.js';
+import { sitesSignature } from '../lib/sites.js';
 
 const HOURS = 96;
 const avg = a => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : null);
 const vals = (rows, k) => rows.map(r => r && r[k]).filter(v => v != null);
 
-export function fuse(keys, sources, marine) {
+export function fuse(keys, sources, marine, ids) {
   const regions = {};
-  for (const id of Object.keys(REGIONS)) {
+  for (const id of ids) {
     const series = [];
     let last = null;
     for (const k of keys) {
@@ -54,24 +55,24 @@ async function collect(list, kind, arg) {
 
 // Only successful live results are cached; a fallback is recomputed on every request so the app
 // returns to live data as soon as the network does.
-async function buildLive(now) {
+async function buildLive(now, sites) {
   const list = await loadConnectors();
   const start = utcMidnight(now), keys = hourKeys(start, HOURS);
-  const [fc, mar] = await Promise.all([collect(withKind(list, 'forecast'), 'forecast'), collect(withKind(list, 'marine'), 'marine')]);
+  const [fc, mar] = await Promise.all([collect(withKind(list, 'forecast'), 'forecast', { sites }), collect(withKind(list, 'marine'), 'marine', { sites })]);
   const sources = [...fc, ...mar].map(({ data, ...rest }) => rest);
   const good = fc.filter(s => s.ok);
   const fail = msg => Object.assign(new Error(msg), { sources });
   if (!good.length) throw fail('No forecast source reachable: ' + fc.map(s => `${s.id}: ${s.error}`).join('; '));
   const marine = mar.filter(s => s.ok).reduce((acc, s) => ({ ...acc, ...s.data }), {});
-  const regions = fuse(keys, good, marine);
+  const regions = fuse(keys, good, marine, Object.keys(sites));
   if (!Object.keys(regions).length) throw fail('Forecast sources returned no usable data');
   return { mode: 'live', start: start.toISOString(), nowHour: now.getUTCHours(), generatedAt: now.toISOString(), hours: HOURS, sources, regions };
 }
 
-export async function getForecast({ mode = 'auto', now = new Date() } = {}) {
+export async function getForecast({ mode = 'auto', now = new Date(), sites = REGIONS } = {}) {
   if (mode === 'demo') return demoForecast(now, 'forced');
   try {
-    return await memo(`forecast:${Math.floor(now.getTime() / 600e3)}`, 10 * 60e3, () => buildLive(now));
+    return await memo(`forecast:${Math.floor(now.getTime() / 600e3)}:${sitesSignature(sites)}`, 10 * 60e3, () => buildLive(now, sites));
   } catch (e) {
     if (mode === 'live') throw e;
     return demoForecast(now, e.message, e.sources || []);

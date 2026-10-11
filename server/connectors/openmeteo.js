@@ -34,11 +34,11 @@ export default {
   attribution: 'Weather data by Open-Meteo.com',
   configured: () => true,
 
-  async forecast() {
-    const ids = Object.keys(REGIONS);
+  async forecast({ sites = REGIONS } = {}) {
+    const ids = Object.keys(sites);
     const q = withKey(new URLSearchParams({
-      latitude: ids.map(i => REGIONS[i].lat).join(','),
-      longitude: ids.map(i => REGIONS[i].lon).join(','),
+      latitude: ids.map(i => sites[i].lat).join(','),
+      longitude: ids.map(i => sites[i].lon).join(','),
       hourly: 'temperature_2m,precipitation,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m',
       wind_speed_unit: 'ms', timezone: 'GMT', forecast_days: '4',
     }));
@@ -46,11 +46,12 @@ export default {
     return toRegionMap(ids, asList(j), { g: 'wind_gusts_10m', w: 'wind_speed_10m', dir: 'wind_direction_10m', p: 'precipitation', c: 'cloud_cover', t: 'temperature_2m' });
   },
 
-  async marine() {
-    const ids = Object.keys(REGIONS).filter(i => REGIONS[i].marine);
+  async marine({ sites = REGIONS } = {}) {
+    const ids = Object.keys(sites).filter(i => sites[i].marine);
+    if (!ids.length) return {};
     const q = withKey(new URLSearchParams({
-      latitude: ids.map(i => REGIONS[i].marine.lat).join(','),
-      longitude: ids.map(i => REGIONS[i].marine.lon).join(','),
+      latitude: ids.map(i => sites[i].marine.lat).join(','),
+      longitude: ids.map(i => sites[i].marine.lon).join(','),
       hourly: 'wave_height', timezone: 'GMT', forecast_days: '4',
     }));
     const j = await getJson(`${host('marine-api.')}/v1/marine?${q}`);
@@ -58,11 +59,11 @@ export default {
   },
 
   // ERA5 reanalysis, ~5 days behind real time. `end` = last full day to request (YYYY-MM-DD).
-  async history({ start, end }) {
-    const ids = Object.keys(REGIONS);
+  async history({ start, end, sites = REGIONS }) {
+    const ids = Object.keys(sites);
     const q = withKey(new URLSearchParams({
-      latitude: ids.map(i => REGIONS[i].lat).join(','),
-      longitude: ids.map(i => REGIONS[i].lon).join(','),
+      latitude: ids.map(i => sites[i].lat).join(','),
+      longitude: ids.map(i => sites[i].lon).join(','),
       start_date: start, end_date: end,
       hourly: 'wind_gusts_10m,precipitation', wind_speed_unit: 'ms', timezone: 'GMT',
     }));

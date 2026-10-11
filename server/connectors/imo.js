@@ -41,9 +41,9 @@ export function normalizeRows(j) {
 // carries no coordinates (or you prefer a specific road/glacier station).
 function pinned() { try { return JSON.parse(readFileSync(new URL('../../config/stations.json', import.meta.url), 'utf8')); } catch { return {}; } }
 
-export function matchRegions(rows, pins = pinned(), maxKm = 40) {
+export function matchRegions(rows, pins = pinned(), maxKm = 40, sites = REGIONS) {
   const out = {};
-  for (const [id, r] of Object.entries(REGIONS)) {
+  for (const [id, r] of Object.entries(sites)) {
     const want = [].concat(pins[id] || []).map(String);
     let hit = rows.find(s => want.includes(s.id));
     let km = null;
@@ -63,9 +63,9 @@ export default {
   license: 'IMO open API (check terms at api.vedur.is)',
   attribution: 'Observations: Icelandic Met Office',
   configured: () => true,
-  async observation() {
+  async observation({ sites = REGIONS } = {}) {
     const rows = normalizeRows(await getJson(URL_OBS));
-    return { regions: matchRegions(rows), stations: rows.length, sample: rows[0] || null };
+    return { regions: matchRegions(rows, pinned(), 40, sites), stations: rows.length, sample: rows[0] || null };
   },
   async ping() {
     const rows = normalizeRows(await getJson(URL_OBS));
