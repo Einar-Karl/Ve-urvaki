@@ -12,12 +12,12 @@ import { readFileSync } from 'node:fs';
 
 const URL_OBS = process.env.IMO_OBS_URL || 'https://api.vedur.is/weather/observations/aws/hour/latest';
 const ALIAS = {
-  id: ['station_id', 'stationid', 'station', 'stod', 'id'], name: ['station_name', 'name', 'nafn'],
-  lat: ['lat', 'latitude'], lon: ['lon', 'lng', 'longitude'],
-  gust: ['wind_gust', 'windgust', 'gust', 'fg', 'wind_speed_of_gust', 'fx'],
-  wind: ['wind_speed', 'windspeed', 'f', 'ff'], dir: ['wind_direction', 'winddirection', 'd', 'dd'],
-  temp: ['temperature', 'temp', 't'], precip: ['precipitation', 'precip', 'r', 'rain'],
-  time: ['time', 'timestamp', 'observation_time', 'datetime', 'date'],
+  id: ['station_id', 'stationid', 'station', 'stod', 'id', 'nr', 'stodnr'], name: ['station_name', 'name', 'nafn', 'heiti', 'stodvarheiti'],
+  lat: ['lat', 'latitude', 'breidd'], lon: ['lon', 'lng', 'longitude', 'lengd'],
+  gust: ['wind_gust', 'windgust', 'gust', 'fg', 'wind_speed_of_gust', 'fx', 'vindhvida', 'hvida', 'vindhviða'],
+  wind: ['wind_speed', 'windspeed', 'f', 'ff', 'vindhradi', 'vindhraði', 'vindur'], dir: ['wind_direction', 'winddirection', 'd', 'dd', 'vindatt', 'vindátt'],
+  temp: ['temperature', 'temp', 't', 'hiti', 'lofthiti'], precip: ['precipitation', 'precip', 'r', 'rain', 'urkoma', 'úrkoma'],
+  time: ['time', 'timestamp', 'observation_time', 'datetime', 'date', 'dags'],
 };
 const pick = (o, names) => {
   const keys = Object.keys(o);

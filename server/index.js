@@ -23,13 +23,17 @@ import { getHistory } from './services/history.js';
 import { checkAll } from './services/health.js';
 import { append, read, toCsvEU, KINDS } from './services/ingest.js';
 import { getBookings } from './services/bookings.js';
+import { getRoads } from './services/roads.js';
+import { getObservations } from './services/observations.js';
 import { loadModel } from './services/model.js';
 import { readTours, buildSites, sitesSignature } from './lib/sites.js';
-import crypto from 'node:crypto';
+import { check as checkAuth } from './lib/auth.js';
 import { scheduleNightly } from './services/train.js';
+import { guestRoutes, partnerRoutes, adminRoutes } from './routes.js';
+import { upsertGuests, scheduleRetention } from './services/guests.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
-const PUBLIC = ['index.html', 'src', 'fixtures', 'docs'];
+const PUBLIC = ['index.html', 'admin.html', 'guest.html', 'src', 'fixtures', 'docs'];
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.md': 'text/plain; charset=utf-8', '.svg': 'image/svg+xml' };
 
 const SEC = { 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY' };
@@ -46,20 +50,17 @@ async function firstOf(kind, ttl, arg) {
   return memo(`${kind}:${c.id}:${sig}`, ttl, async () => ({ source: c.id, attribution: c.attribution, ...(await c[kind](arg)) }));
 }
 
-const eq = (a, b) => { const h = x => crypto.createHash('sha256').update(String(x)).digest(); return crypto.timingSafeEqual(h(a), h(b)); };
-function authorized(req, p) {
-  const pass = process.env.DASHBOARD_PASSWORD;
-  if (!pass || p === '/healthz') return true;
-  const tok = process.env.INGEST_TOKEN;
-  if (tok && p.startsWith('/api/ingest/') && eq(req.headers['x-api-key'] || '', tok)) return true;
-  const h = req.headers.authorization || '';
-  if (!h.startsWith('Basic ')) return false;
-  const [u, ...rest] = Buffer.from(h.slice(6), 'base64').toString().split(':');
-  return eq(u, process.env.DASHBOARD_USER || 'arctic') && eq(rest.join(':'), pass);
-}
 const siteSet = () => { const { demo, tours, warnings } = readTours(); return { demo, tours, warnings, sites: buildSites(tours) }; };
 const roadsOff = { configured: false, records: [], byRegion: {} };
 
+// Browser sessions (Basic auth is cached by the browser) must send application/json: a cross-site HTML form
+// cannot, which blocks CSRF. API-key callers and local development are exempt.
+const needsJson = req => req.auth && req.auth.who !== 'dev' && req.auth.role !== 'key' && req.auth.who !== 'public' && !['GET', 'HEAD'].includes(req.method);
+class HttpError extends Error { constructor(m, code) { super(m); this.code = code; } }
+async function jsonBody(req) {
+  if (needsJson(req) && !String(req.headers['content-type'] || '').includes('application/json')) throw new HttpError('Content-Type must be application/json', 415);
+  return body(req);
+}
 async function body(req, limit = 1e6) {
   let n = 0; const chunks = [];
   for await (const c of req) { n += c.length; if (n > limit) throw new Error('payload too large'); chunks.push(c); }
@@ -72,29 +73,32 @@ export function createServer() {
     const p = url.pathname, mode = url.searchParams.get('mode') || process.env.DATA_MODE || 'auto';
     try {
       if (p === '/healthz') return send(res, 200, { ok: true, uptimeS: Math.round(process.uptime()) });
-      if (!authorized(req, p)) { res.setHeader('WWW-Authenticate', 'Basic realm="Veðurvaki", charset="UTF-8"'); return send(res, 401, { error: 'authentication required' }); }
+      const auth = checkAuth(req, p);
+      if (!auth.ok) { res.setHeader('WWW-Authenticate', `Basic realm="${auth.realm}", charset="UTF-8"`); return send(res, 401, { error: auth.reason || 'authentication required' }); }
+      req.auth = auth;
+      const rctx = { req, res, p, url, send, json: jsonBody };
+      if (await guestRoutes(rctx) || await partnerRoutes(rctx) || await adminRoutes(rctx)) return;
+      if (p === '/admin') return send(res, 200, await readFile(join(ROOT, 'admin.html')), 'text/html; charset=utf-8');
       if (p === '/api/tours') { const { demo, tours, warnings } = siteSet(); return send(res, 200, { demo, tours, warnings }); }
       if (p === '/api/model') return send(res, 200, loadModel());
       if (p === '/api/bookings') return send(res, 200, await getBookings({ tours: siteSet().tours }));
       if (p === '/api/forecast') return send(res, 200, await getForecast({ mode, sites: siteSet().sites }));
       if (p === '/api/history') return send(res, 200, await getHistory({ mode, sites: siteSet().sites }));
       if (p === '/api/health') return send(res, 200, await checkAll({ force: url.searchParams.has('force') }));
-      if (p === '/api/observations') return send(res, 200, await firstOf('observation', 5 * 60e3, { sites: siteSet().sites }));
+      if (p === '/api/observations') return send(res, 200, await getObservations({ sites: siteSet().sites }));
       if (p === '/api/aurora') {
         const c = withKind(await loadConnectors(), 'aurora')[0];
         if (!c) throw new Error('no connector provides "aurora"');
         return send(res, 200, { source: c.id, attribution: c.attribution, series: await memo('aurora', 30 * 60e3, () => c.aurora()) });
       }
-      if (p === '/api/roads') {
-        const c = withKind(await loadConnectors(), 'road')[0];
-        return send(res, 200, c && c.configured() ? await memo('road', 2 * 60e3, () => c.road()) : roadsOff);
-      }
+      if (p === '/api/roads') { const { sections, ...slim } = await getRoads({ tours: siteSet().tours }); return send(res, 200, slim); }
       const m = p.match(/^\/api\/ingest\/(\w+?)(\.csv)?$/);
       if (m && KINDS.includes(m[1])) {
-        // With DASHBOARD_PASSWORD set the gate above already authenticated this request. Without it,
-        // INGEST_TOKEN alone protects writes (the dashboard cannot then save decisions: set a password).
-        if (!process.env.DASHBOARD_PASSWORD && req.method === 'POST' && process.env.INGEST_TOKEN && !eq(req.headers['x-api-key'] || '', process.env.INGEST_TOKEN)) return send(res, 401, { error: 'invalid or missing x-api-key' });
-        if (req.method === 'POST') { const r = append(m[1], await body(req)); return send(res, r.ok ? 202 : 422, r); }
+        if (m[1] === 'guests') {
+          if (req.method !== 'POST') return send(res, 405, { error: 'guest records are write-only here; read them in the admin page' });
+          const b = await jsonBody(req); const r = upsertGuests(Array.isArray(b) ? b : [b]); return send(res, r.ok ? 202 : 422, r);
+        }
+        if (req.method === 'POST') { const r = append(m[1], await jsonBody(req)); return send(res, r.ok ? 202 : 422, r); }
         const rows = read(m[1], +url.searchParams.get('limit') || 100);
         return m[2] ? send(res, 200, toCsvEU(rows), 'text/csv; charset=utf-8') : send(res, 200, rows);
       }
@@ -105,7 +109,7 @@ export function createServer() {
       if (rel.startsWith('..') || !PUBLIC.some(d => rel === d || rel.startsWith(d + '/'))) return send(res, 404, 'Not found', 'text/plain');
       send(res, 200, await readFile(join(ROOT, rel)), TYPES[extname(rel)] || 'application/octet-stream');
     } catch (e) {
-      fail(res, e, e instanceof SyntaxError ? 400 : 502);
+      fail(res, e, e instanceof HttpError ? e.code : e instanceof SyntaxError ? 400 : 502);
     }
   });
 }
@@ -114,7 +118,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = +process.env.PORT || 8080;
   createServer().listen(port, () => {
     console.log(`Veðurvaki → http://localhost:${port}  (DATA_MODE=${process.env.DATA_MODE || 'auto'})`);
+    scheduleRetention();
     if (process.env.AUTO_TRAIN === '1') { scheduleNightly(); console.log('Nightly threshold training enabled (03:30 UTC).'); }
+    if (process.env.MESSAGING_MODE !== 'live') console.log('Guest messaging is in DRY-RUN mode: messages are stored in the outbox, not sent (set MESSAGING_MODE=live).');
     if (!process.env.DASHBOARD_PASSWORD) console.warn('WARNING: DASHBOARD_PASSWORD is not set — the dashboard and API are open to anyone who can reach this port.');
   });
 }

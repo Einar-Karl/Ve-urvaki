@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Veðurvaki Admin</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/src/admin.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="side" id="side">
+    <div class="logo"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="10" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 13c2.5-2 4.5-2 7 0s4.5 2 7 0M4 9c2.5-2 4.5-2 7 0s4.5 2 7 0" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>Veðurvaki <span>Admin</span></div>
+    <nav id="nav" aria-label="Admin sections"></nav>
+    <a class="back" href="/">← Back to dashboard</a>
+  </aside>
+  <main class="main">
+    <header class="bar"><button class="menu" id="menu" aria-label="Menu">☰</button><h1 id="title"></h1><span class="chip" id="mode"></span></header>
+    <div id="view" class="view" aria-live="polite"></div>
+  </main>
+</div>
+<div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+<dialog id="dlg"></dialog>
+<script src="/src/admin.js"></script>
+</body>
+</html>

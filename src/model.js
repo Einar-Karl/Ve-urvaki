@@ -42,6 +42,9 @@ function risk(t,h,dur){dur=dur||t.dur;const f=tourF(t);const parts=[];
   let change=cancel<.2?cancel*1.2+.03:cancel<.55?.32:cancel<.75?.2:.1;
   let go=Math.max(.01,1-cancel-change);const s=go+change+cancel;
   const out={go:go/s,change:change/s,cancel:cancel/s,unc,parts:parts.sort((a,b)=>b.r-a.r)};
+  // A closed/impassable access road (Vegagerðin) overrides the weather for the next 24 h.
+  const rb=ROADS&&ROADS.blocked&&ROADS.blocked[t.id];
+  if(rb&&h<NOW+24){out.road=rb;out.cancel=Math.max(out.cancel,.9);out.go=Math.min(out.go,.05);out.change=Math.min(out.change,.05)}
   out.status=out.cancel>=.5?"cancel":(out.cancel>=.2||out.change>=.3?"change":"go");return out;}
 
 const STAT={go:"Fer fram",change:"Breyting líkleg",cancel:"Aflýsing líkleg"};

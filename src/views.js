@@ -136,7 +136,7 @@ function drawDetail(all){
   const acts=[];
   if(R.status==="go")acts.push({h:"Engin aðgerð þarf",d:"Spáin er innan marka þessarar ferðar. Vöktun heldur áfram og þú færð tilkynningu ef staðan breytist."});
   else{
-    acts.push({h:"Senda gestum snemmbúna viðvörun",d:`${d.pax} gestir fá skilaboð á sínu tungumáli (SMS + tölvupóstur) með valkostum. Reynsla sýnir að 70% velja innan 2 klst.`,b:"Senda"});
+    acts.push({h:"Senda gestum viðvörun",d:`${d.pax} gestir fá skilaboð á sínu tungumáli (SMS + tölvupóstur) með hlekk þar sem þeir velja nýjan dag, aðra ferð, inneign eða endurgreiðslu. Skilaboðin eru yfirfarin og send í Stjórnun.`,b:"Opna skilaboð",href:"/admin.html#notifications"});
     acts.push(next?{h:`Bjóða endurbókun · ${dayLbl(next.h)} ${hhmm(next.h)}`,d:`${seats} laus sæti, ${pct(next.R.go)} líkur á að sú ferð fari fram. Sætin eru tekin frá í 6 klst.`,b:"Taka frá"}:{h:"Bjóða inneign",d:"Engin örugg brottför innan 72 klst. Inneign með 18 mánaða gildistíma heldur tekjunum inni.",b:"Bjóða"});
     if(alt)acts.push({h:`Bjóða varaferð · ${alt.t.name}`,d:`${capOf(alt)-alt.pax} laus sæti ${hhmm(alt.h)}, ${pct(alt.R.go)} líkur á að hún fari fram. Mismunur á verði: ${fmtISK(alt.t.price-t.price)}.`,b:"Bjóða"});
     acts.push({h:"Láta leiðsögn og bílstjóra vita",d:"Vaktaplan uppfærist sjálfkrafa þegar ákvörðun er staðfest.",b:"Undirbúa"});
@@ -145,7 +145,7 @@ function drawDetail(all){
   const el=document.getElementById("brottfor");
   el.innerHTML=`
    <div class="ph"><div><h2>${t.name}</h2><span class="s">${dayLbl(d.h)} · kl. ${hhmm(d.h)}–${hhmm(d.h+t.dur)} · ${TYPES[t.type].n} · ${REG[t.r].n} · ${d.pax}/${capOf(d)} sæti bókuð</span></div>
-     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="pill p-${R.status}">${STAT[R.status]}</span><span class="pill" style="background:var(--sunk);color:var(--muted)">Ákvörðunarfrestur ${dayLbl(deadline(d.h))} ${hhmm(deadline(d.h))}</span></div></div>
+     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="pill p-${R.status}">${STAT[R.status]}</span>${R.road?`<span class="pill p-cancel" title="${esc(R.road.join(", "))}">Vegur lokaður</span>`:""}<span class="pill" style="background:var(--sunk);color:var(--muted)">Ákvörðunarfrestur ${dayLbl(deadline(d.h))} ${hhmm(deadline(d.h))}</span></div></div>
    <div class="detail">
     <div class="dsec">
       <div><h3>Líkur á útkomu</h3>
@@ -170,7 +170,7 @@ function drawDetail(all){
        </table></div>
       ${decisionBlock(d)}
       <div><h3>Tillögur að aðgerðum</h3>
-       <div class="actions">${acts.map((a,i)=>{const k=selKey+"-"+i;const dn=done.has(k);return `<div class="act"><span class="no">${i+1}</span><div><div class="h">${a.h}</div><div class="d">${a.d}</div></div>${a.b?`<button class="btn ${dn?"done":""}" data-k="${k}">${dn?"Gert ✓":a.b}</button>`:""}</div>`}).join("")}</div><p class="note" style="margin-top:6px">Hnapparnir merkja aðeins verkið sem unnið. SMS, tölvupóstur og breytingar í Bókun eru ekki tengd enn.</p></div>
+       <div class="actions">${acts.map((a,i)=>{const k=selKey+"-"+i;const dn=done.has(k);return `<div class="act"><span class="no">${i+1}</span><div><div class="h">${a.h}</div><div class="d">${a.d}</div></div>${a.href?`<a class="btn primary" href="${a.href}">${a.b}</a>`:a.b?`<button class="btn ${dn?"done":""}" data-k="${k}">${dn?"Gert ✓":a.b}</button>`:""}</div>`}).join("")}</div><p class="note" style="margin-top:6px">Skilaboð til gesta eru send úr Stjórnun. Hinir hnapparnir merkja aðeins verkið sem unnið; breytingar í Bókun eru enn gerðar handvirkt.</p></div>
       ${R.status!=="go"?`<div><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3 style="margin:0">Skilaboð til gesta · forskoðun</h3>
         <div class="tabs" role="group" aria-label="Tungumál">${["en","de","is"].map(l=>`<button aria-pressed="${l===lang}" data-l="${l}">${l.toUpperCase()}</button>`).join("")}</div></div>
         <div class="msg" style="margin-top:8px"><div class="hd"><span>SMS + tölvupóstur · ${d.pax} viðtakendur</span><span>Sendist ${hhmm(Math.max(NOW+1,deadline(d.h)-10))} ef samþykkt</span></div>${messages(d,{next,alt})}</div></div>`:""}
@@ -216,7 +216,9 @@ function extraNotes(d){
     const at=hDate(d.h).getTime();const k=KP.reduce((b,x)=>Math.abs(new Date(x.t)-at)<Math.abs(new Date(b.t)-at)?x:b);
     if(Math.abs(new Date(k.t)-at)<=6*3600e3)out.push(`Kp-gildi nálægt brottför: ${String(k.kp).replace(".",",")} (NOAA).`);
   }
-  const rd=ROADS&&ROADS[t.r];if(rd&&rd.length)out.push(`Vegagerðin: ${rd.length} atvik á svæðinu, þar af ${rd.filter(r=>r.closed).length} lokanir.`);
+  const rd=ROADS&&ROADS.byTour&&ROADS.byTour[t.id];
+  if(rd&&rd.length){const bad=rd.filter(r=>r.state==="closed");
+    out.push(bad.length?`Vegagerðin: ${bad.map(r=>esc(r.name)+(r.desc?" · "+esc(r.desc):"")).join("; ")}.`:`Vegagerðin: vegir tengdir ferðinni eru opnir (${rd.length}).`)}
   return out.length?out.join(" ")+" ":"";
 }
 

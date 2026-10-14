@@ -136,7 +136,10 @@ test('auth: with DASHBOARD_PASSWORD everything is locked except /healthz and tok
       assert.equal((await fetch(`${base}/`, { headers: basic('arctic', 's3cret') })).status, 200);
       const rec = { tourId: 2, departure: '2026-10-12T09:00:00Z', outcome: 'ran' };
       assert.equal((await fetch(`${base}/api/ingest/outcomes`, { method: 'POST', body: JSON.stringify(rec), headers: { 'x-api-key': 'tok' } })).status, 202);
-      assert.equal((await fetch(`${base}/api/ingest/outcomes`, { method: 'POST', body: JSON.stringify(rec), headers: basic('arctic', 's3cret') })).status, 202);
+      const asJson = h => ({ ...h, 'content-type': 'application/json' });
+      assert.equal((await fetch(`${base}/api/ingest/outcomes`, { method: 'POST', body: JSON.stringify(rec), headers: asJson(basic('arctic', 's3cret')) })).status, 202);
+      // CSRF guard: a browser session posting anything but JSON (what a cross-site form can send) is refused
+      assert.equal((await fetch(`${base}/api/ingest/outcomes`, { method: 'POST', body: JSON.stringify(rec), headers: { ...basic('arctic', 's3cret'), 'content-type': 'text/plain' } })).status, 415);
       assert.equal((await fetch(`${base}/api/ingest/outcomes`, { method: 'POST', body: JSON.stringify(rec), headers: { 'x-api-key': 'nope' } })).status, 401);
       assert.equal((await fetch(`${base}/api/tours`, { headers: { 'x-api-key': 'tok' } })).status, 401); // token only opens ingest
     });

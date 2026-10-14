@@ -5,8 +5,8 @@ own data, and a server**, which only you and Arctic can provide. This guide list
 who does it, and how to know it worked.
 
 > **Honest status.** The build environment could not reach any of the data providers, so the live
-> calls (Open-Meteo, MET Norway, IMO, NOAA, Bókun, Vegagerðin) have **not been run against the real
-> services yet**. Parsing, signing, fusion, fallback, learning and auth are covered by 25 automated
+> calls (Open-Meteo and its models, MET Norway, IMO, NOAA, Bókun, Vegagerðin, Twilio, Resend) have **not been run against the real
+> services yet**. Parsing, signing, fusion, fallback, learning, auth, the guest flow and messaging requests are covered by 43 automated
 > tests using documented response shapes. **Step 7 (`check`) is where reality gets tested.**
 > Anything marked ⚠ below may need a small fix once real responses are seen.
 
@@ -14,12 +14,15 @@ who does it, and how to know it worked.
 
 | Works (tested) | Missing: needs a decision or build |
 |---|---|
-| Per-tour forecast at each meeting point (2 weather sources, disagreement widens uncertainty) | **Guest messaging.** SMS/email is *not* sent. The "Senda" button only ticks a box |
-| Bookings from Bókun (⚠ field names unverified) or from CSV/API pushes | **Writing back to Bókun** (rebooking, credits, cancellations) |
-| One-click duty-manager decisions, saved with the forecast on screen | **Individual user accounts.** There is one shared password |
+| Per-tour forecast at each meeting point from **5 sources** (ECMWF, ICON, GFS via Open-Meteo, plus MET Norway and Open-Meteo best-match; disagreement widens uncertainty) | **Writing back to Bókun** (moving bookings, promo codes, refunds): a person does it from the admin *To do* list |
+| Bookings from Bókun (⚠ field names unverified) or from CSV/API pushes | **Guest replies by SMS**, calendar invites, delivery receipts |
+| One-click duty-manager decisions, saved with the forecast on screen | **Individual user accounts.** One dashboard password and one admin password |
 | Learning each tour's cancel threshold from those decisions (nightly) | **Revenue-recovery numbers** (64% rebook, 92%, 35%) are placeholder assumptions: replace with Arctic's real rates |
 | Accuracy report for the shadow period (`npm run report`) | Other factors beyond wind gusts in the *learned* model (rain, waves, road closures are shown but only gust is fitted) |
-| Password protection, health endpoint, Docker, CI | Push/SMS alerts to staff when a departure turns red |
+| **Guest flow** (warning → rebook / other tour / voucher / refund / keep) in EN/DE/IS, **SMS (Twilio) + email (Resend)** with a dry-run default, seat holds | Push/SMS alerts to *staff* when a departure turns red |
+| **Admin page** (tours, guests, requests, notifications, connections, model, policy, API keys) · **Partner API** for other programs | Several operators in one instance (one deployment per operator) |
+| **Vegagerðin roads and stations** (no key needed); a closed access road forces "cancel" | Native-speaker review of German and Icelandic guest text |
+| Password protection, health endpoint, Docker, CI | |
 | Demo fallback so a presentation never goes blank | Forecast-at-decision-time archive for old seasons (imported history is matched to reanalysis weather instead) |
 
 ---
@@ -83,12 +86,13 @@ from what `server/connectors/bokun.js` expects, that's a ten-minute fix.
 `npm run import:bookings` (template: `docs/bookings-template.csv`), or POST them from Zapier/Make to
 `/api/ingest/bookings`. The dashboard uses them automatically.
 
-### 4. Vegagerðin road data
-Vegagerðin publishes DATEX II services (road conditions, incidents, measurements) at
-<https://vegagerdin.is/vegagerdin/gagnasafn/vefthjonustur/datexii-2>. Copy the URL of the
-*road conditions* or *point incidents* service into `VEGAGERDIN_DATEX_URL`. If the page says access
-needs registration, follow it (or email Vegagerðin). Until set, road alerts are simply absent.
-⚠ The parser is generic and tested on a hand-written sample only.
+### 4. Vegagerðin road data (no key needed)
+Vegagerðin's open road-conditions feed (`gagnaveita.vegagerdin.is/api/faerd2017_1`) and road-weather stations feed (`…/vedur2014_1`) are
+used automatically. Nothing to configure. The road feed has no coordinates, so you tell each tour which road sections matter:
+Admin → Tours → *Edit* → **Road sections that must be open** (search "Hringvegur", "Þórsmerkurvegur" …; typing without Icelandic letters works).
+If any linked section is closed or impassable, that tour's departures within 24 hours are treated as very likely cancelled and flagged "Vegur lokaður".
+⚠ The road feed's field names were confirmed from open-source clients; the *stations* feed's wind field names were not.
+`npm run check` prints a sample of both so any mismatch is a five-minute fix.
 
 ### 5. Fill in the real tour list: `config/tours.json`
 The file ships with **12 example tours and `"demo": true`**. Replace them with Arctic's tours and set
@@ -185,6 +189,24 @@ person always decides; every decision is logged with who and when.
 
 ---
 
+## Phase 2: guest messaging, admin and other programs
+
+Full detail in [GUEST-FLOW.md](GUEST-FLOW.md) and [PARTNER-API.md](PARTNER-API.md). In short:
+
+| # | Step | Who | Needs |
+|---|---|---|---|
+| 11 | Set `PUBLIC_BASE_URL`, `ADMIN_PASSWORD`; restart | You | server access |
+| 12 | Resend account + verified domain → `RESEND_API_KEY`, `EMAIL_FROM` | You | DNS access for the domain |
+| 13 | Twilio account + sender → `TWILIO_*` | You | credit card; check sender rules for Iceland and guests' countries |
+| 14 | Admin → Settings: brand, contact phone/email, what guests are offered | You + Arctic ops | decisions on voucher bonus and refunds, checked against your terms |
+| 15 | Get guests into the system (CSV or API) | Arctic ops / booking tool | booking exports with email or phone |
+| 16 | **Dry-run rehearsal:** prepare and send to yourself and colleagues; read the outbox | You + ops | none; messages are not sent in dry-run |
+| 17 | Native-speaker read of German and Icelandic guest text; privacy notice and processor agreements | Arctic | a colleague/translator; whoever handles GDPR |
+| 18 | `MESSAGING_MODE=live` | You | the above |
+
+**Admin page** (`/admin`): Overview (setup checklist), Notifications, Guest requests, Tours, Guests, Connections, Model, Settings,
+Partners & API keys, Activity. Give other programs their own key under *Partners & API*.
+
 ## Operating it
 
 * **Update:** `git pull && docker compose up -d --build`
@@ -211,6 +233,8 @@ person always decides; every decision is logged with who and when.
 | Badge says **Sýnigögn** | No weather source reachable: server firewall, or invalid Open-Meteo key. See Tengingar |
 | Open-Meteo ✘ `HTTP 401/403` | Key missing/wrong, or still using the free host for commercial traffic |
 | MET Norway ✘ `HTTP 403` | `VEDURVAKI_UA` missing or generic |
+| Guests don't get messages | Admin header says "dry-run": set `MESSAGING_MODE=live`. Or the provider shows an error in Activity (wrong key, unverified domain, invalid number) |
+| Guest link says "not valid or has expired" | Link older than `linkValidDays` after departure, or the booking was erased; prepare a new message |
 | Bókun ✘ or "Bókanir: sýnigögn" | Wrong keys, API access not enabled, no `bokunProductId`, or ⚠ field names differ (send me the `check` output) |
 | Yellow box in Tengingar | A mistake in `config/tours.json`; the message names the tour and field |
 | "Þarf fleiri til að læra" on a tour | Fewer than 30 decisions or fewer than 8 of either kind. Keep recording |

@@ -18,11 +18,12 @@ npm run demo          # force demo data (presenting without internet)
 npm run check         # ping every data source and print the result
 npm run train         # learn per-tour cancellation thresholds from recorded decisions
 npm run report        # shadow-mode scorecard: model vs. duty managers
-npm test              # 25 tests
+npm test              # 43 tests
 docker compose up -d --build   # production-style run (see .env.example)
 ```
 
 **Making it real for Arctic Adventures: follow [docs/SETUP-ARCTIC.md](docs/SETUP-ARCTIC.md).**
+Pages: dashboard `/`, **admin `/admin`**, guest page `/g/<private link>`. Guest flow: [docs/GUEST-FLOW.md](docs/GUEST-FLOW.md). Other programs: [docs/PARTNER-API.md](docs/PARTNER-API.md).
 Opening `index.html` directly (no server) still works with the built-in synthetic model.
 
 ## What is real and what is not
@@ -30,13 +31,15 @@ Opening `index.html` directly (no server) still works with the built-in syntheti
 | | |
 |---|---|
 | Weather forecast | **Live** from Open-Meteo + MET Norway when reachable, per tour meeting point; badge shows "Beint" |
-| Waves, history (30 d), aurora Kp, station readings | Live (Open-Meteo Marine/ERA5, NOAA, Icelandic Met Office) |
+| Waves, history (30 d), aurora Kp, station readings | Live (Open-Meteo Marine/ERA5, NOAA, Icelandic Met Office, Vegagerðin stations) |
+| Road closures | Live from Vegagerðin (no key); a closed linked road forces "cancel" |
+| Guest flow (rebook / other tour / voucher / refund) | Built; EN/DE/IS; SMS via Twilio, email via Resend; **dry-run until `MESSAGING_MODE=live`** |
+| Admin page, partner API keys | Built |
 | Bookings | **Live from Bókun** when keys are set; else pushed CSV/API snapshots; else demo numbers |
 | Tour list | `config/tours.json`: ships with example tours (`"demo": true`) |
 | Decisions | Duty managers record them in the dashboard with the forecast on screen |
 | Cancellation thresholds | Manual `limits` per tour, then **learned nightly** from recorded decisions |
-| Road closures | Needs `VEGAGERDIN_DATEX_URL` |
-| Guest SMS/email, Bókun write-back, revenue-recovery rates | **Not built / placeholder.** The action buttons only tick a box |
+| Bókun write-back (moving bookings, promo codes, refunds), revenue-recovery rates | **Not built / placeholder.** A person acts on the admin "To do" list |
 
 If no weather provider is reachable the server serves clearly labelled demo data (`Sýnigögn`);
 `?mode=live` disables the fallback.
@@ -48,11 +51,11 @@ If no weather provider is reachable the server serves clearly labelled demo data
 ## Structure
 
 ```
-index.html            dashboard markup
+index.html            dashboard · admin.html admin · guest.html guest page
 src/                  front end (classic scripts: data → model → live → views → main) + styles.css
 server/index.js       static files + JSON API
-server/connectors/    one file per data source (openmeteo, metno, imo, vegagerdin, noaa, bokun)
-server/services/      forecast fusion, history, bookings, learning (model/train), health, ingest, demo
+server/connectors/    one file per data source (openmeteo + models, metno, openweather, imo, vegagerdin, noaa, bokun, twilio, resend)
+server/services/      forecast fusion, history, bookings, roads, observations, learning, cases (guest flow), messaging, guests, policy, keys, health, ingest, demo
 server/lib/           http client, cache (stale-on-error), regions, tour sites, time helpers
 config/               tours.json (edit), thresholds.json (written by training), stations.json
 Dockerfile, docker-compose.yml, .env.example   deployment
@@ -60,7 +63,9 @@ fixtures/             synthetic demo data (npm run fixtures regenerates)
 scripts/              check-connections, train, report, import-csv, make-fixtures
 test/                 node:test suite
 docs/SETUP-ARCTIC.md  step-by-step go-live guide
-docs/ADDONS.md        how to add connectors / push data in
+docs/GUEST-FLOW.md    guest messaging, rebooking, vouchers, refunds
+docs/PARTNER-API.md   API for other programs and operators
+docs/ADDONS.md        how to add connectors
 ```
 
 ## Data sources and licences

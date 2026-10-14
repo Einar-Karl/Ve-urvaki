@@ -7,7 +7,6 @@ import { utcMidnight } from '../lib/time.js';
 import { loadConnectors, withKind } from '../registry.js';
 import { read } from './ingest.js';
 
-const DAYS = 4;
 const ymd = d => d.toISOString().slice(0, 10);
 
 export function latestSnapshots(rows, fromMs, toMs) {
@@ -20,13 +19,13 @@ export function latestSnapshots(rows, fromMs, toMs) {
   return [...byKey.values()];
 }
 
-export async function getBookings({ tours, now = new Date() }) {
-  const start = utcMidnight(now), end = new Date(start.getTime() + (DAYS - 1) * 86400e3);
+export async function getBookings({ tours, now = new Date(), days = 4 }) {
+  const start = utcMidnight(now), end = new Date(start.getTime() + (days - 1) * 86400e3);
   const notes = [];
   const c = withKind(await loadConnectors(), 'bookings').find(c => c.configured());
   if (c) {
     try {
-      const r = await memo(`bookings:${c.id}:${Math.floor(now.getTime() / 120e3)}`, 120e3, async () => {
+      const r = await memo(`bookings:${c.id}:${days}:${Math.floor(now.getTime() / 120e3)}`, 120e3, async () => {
         const out = await c.bookings({ tours, start: ymd(start), end: ymd(end) });
         if (!out.departures.length && out.errors.length) throw new Error(out.errors.map(e => `tour ${e.tourId}: ${e.error}`).join('; '));
         return out;

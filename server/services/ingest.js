@@ -7,7 +7,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const DIR = process.env.INGEST_DIR || fileURLToPath(new URL('../../data/ingest/', import.meta.url));
-export const KINDS = ['outcomes', 'bookings', 'events'];
+export const KINDS = ['outcomes', 'bookings', 'events', 'guests'];
 const OUTCOMES = ['ran', 'cancelled', 'changed'];
 
 export function validate(kind, rec) {

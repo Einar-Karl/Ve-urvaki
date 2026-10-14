@@ -1,7 +1,7 @@
 FROM node:22-alpine
 ENV NODE_ENV=production
 WORKDIR /app
-COPY package.json index.html ./
+COPY package.json index.html admin.html guest.html ./
 COPY server ./server
 COPY src ./src
 COPY scripts ./scripts

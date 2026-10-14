@@ -10,7 +10,8 @@ import { join } from 'node:path';
 process.env.INGEST_DIR = mkdtempSync(join(tmpdir(), 'vv-')) + '/';
 const { setFetch } = await import('../server/lib/http.js');
 const { clearCache } = await import('../server/lib/cache.js');
-const { default: openmeteo } = await import('../server/connectors/openmeteo.js');
+const { default: omList } = await import('../server/connectors/openmeteo.js');
+const openmeteo = omList[0];
 const { parseTimeseries } = await import('../server/connectors/metno.js');
 const { parseKp } = await import('../server/connectors/noaa.js');
 const { normalizeRows, matchRegions } = await import('../server/connectors/imo.js');
@@ -156,7 +157,6 @@ test('server: ingest accepts valid outcomes, rejects invalid ones, exports CSV',
     assert.equal((await post({ tourId: 2, outcome: 'ran' })).status, 422);
     const csv = await (await fetch(`${base}/api/ingest/outcomes.csv`)).text();
     assert.match(csv, /tourId;departure;outcome/);
-    assert.equal((await fetch(`${base}/api/roads`).then(r => r.json())).configured, false);
   });
 });
 

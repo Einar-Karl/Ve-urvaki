@@ -5,7 +5,7 @@ let LIVE=null;            // { siteId: [ {g,w,dir,p,c,t,s,sp} × 96 hours from S
 let HIST=null;            // history payload from /api/history
 let OBS=null;             // latest station readings by site
 let KP=null;              // NOAA Kp series
-let ROADS=null;           // Vegagerðin situations by region
+let ROADS=null;           // /api/roads: { byTour, blocked } from Vegagerðin
 let HEALTH=null;          // connector status list
 let MODEL=null;           // learned thresholds from /api/model
 let TOUR_WARNINGS=[];     // problems found in config/tours.json
@@ -50,7 +50,7 @@ async function loadData(){
     opt("/api/history",j=>{HIST=j}),
     opt("/api/observations",j=>{OBS=j.regions||null}),
     opt("/api/aurora",j=>{KP=j.series||null}),
-    opt("/api/roads",j=>{ROADS=j.configured?j.byRegion:null}),
+    opt("/api/roads",j=>{ROADS=j.configured?j:null}),
     opt("/api/ingest/outcomes?limit=2000",rows=>rows.forEach(r=>{DECISIONS[r.tourId+"|"+new Date(r.departure).toISOString()]=r})),
   ]);
   applyModel();

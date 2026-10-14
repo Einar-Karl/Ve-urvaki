@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { REGIONS, nearestRegion } from './regions.js';
 
 const FILE = () => process.env.TOURS_FILE || fileURLToPath(new URL('../../config/tours.json', import.meta.url));
+export const tourFile = FILE;
 
 // Must match TYPES in src/data.js.
 export const TOUR_TYPES = ['snow', 'hike', 'cave', 'snork', 'aurora', 'whale', 'jeep', 'raft', 'atv'];
@@ -20,6 +21,7 @@ export function validateTours(tours) {
     if (typeof t.lat !== 'number' || typeof t.lon !== 'number') w.push(`${n}: lat/lon must be numbers — forecast falls back to the region`);
     if (!Array.isArray(t.departures) || !t.departures.length || t.departures.some(x => !/^\d{1,2}:\d\d$/.test(x))) w.push(`${n}: departures must be a list like ["09:00","13:00"]`);
     if (!(t.capacity > 0)) w.push(`${n}: capacity must be > 0`);
+    if (t.roads != null && !(Array.isArray(t.roads) && t.roads.every(x => typeof x === 'string'))) w.push(`${n}: roads must be a list of road-section names or ids`);
     if (t.limits != null) {
       const ok = typeof t.limits === 'object' && Object.entries(t.limits).every(([k, v]) => ['g', 'p', 'c', 's', 't'].includes(k) && Array.isArray(v) && v.length === 2 && v[0] < v[1] && v.every(Number.isFinite));
       if (!ok) w.push(`${n}: limits must look like {"g":[16,27]} — [risk starts, cancel point] for g (gust m/s), p (rain mm/h), c (cloud %), s (waves m), t (°C); ignored`);

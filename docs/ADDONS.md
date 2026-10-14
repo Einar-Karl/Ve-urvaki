@@ -33,7 +33,9 @@ Kinds the app already consumes:
 | `observation` | `observation({ sites })` | `{ regions: { siteId: { station, name, km, g, w, dir, t, p, time } } }` |
 | `bookings` | `bookings({ tours, start, end })` | `{ departures: [ { tourId, departure: ISO, pax, capacity, soldOut } ], errors: [] }` |
 | `aurora` | `aurora()` | `[ { t: ISO, kp } ]` |
-| `road` | `road()` | `{ configured, records: [...], byRegion: { regionId: [ { closed, comment, … } ] } }` |
+| `road` | `road()` | `{ sections: [ { id, name, short, state: 'open' or 'closed', code, desc, note, updated } ] }` (tours link to sections by name via `roads` in `tours.json`) |
+| `sms` | `sms({ to, text })` | `{ providerId, status }`. Only called when `MESSAGING_MODE=live` |
+| `email` | `email({ to, subject, text, html, replyTo })` | `{ providerId, status }` |
 
 Several `forecast` connectors can run side by side: values are averaged and the disagreement
 between them widens the cancellation-uncertainty figure. Adding a second weather provider is just

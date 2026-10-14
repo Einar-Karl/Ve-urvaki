@@ -16,6 +16,11 @@ try {
   console.log(JSON.stringify(rows2[0], null, 2));
 } catch (e) { console.log('\nIMO sample unavailable:', e.message); }
 
+for (const [label, url] of [['Vegagerðin road conditions', process.env.VEGAGERDIN_ROADS_URL || 'https://gagnaveita.vegagerdin.is/api/faerd2017_1'], ['Vegagerðin weather stations', process.env.VEGAGERDIN_STATIONS_URL || 'https://gagnaveita.vegagerdin.is/api/vedur2014_1']]) {
+  try { const j = await getJson(url, { timeout: 15000 }); const r = Array.isArray(j) ? j : (j.data || Object.values(j)); console.log(`\n${label}: ${r.length} records, sample:`); console.log(JSON.stringify(r[0], null, 2)); }
+  catch (e) { console.log(`\n${label} sample unavailable:`, e.message); }
+}
+
 const bad = rows.filter(r => r.status === 'error');
 console.log(bad.length ? `\n${bad.length} connector(s) failing — the app will fall back to demo data for forecasts.` : '\nAll configured connectors reachable.');
 process.exit(bad.length ? 1 : 0);

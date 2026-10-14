@@ -1,9 +1,11 @@
 // Connector registry. Every .js file in server/connectors/ (and in $CONNECTORS_DIR, for add-ons kept
-// outside this repo) that default-exports { id, label, kinds, ... } is picked up automatically.
+// outside this repo) that default-exports a connector { id, label, kinds, ... } or an ARRAY of them is
+// picked up automatically. Connectors can be switched off in the admin page (config/settings.json).
 // See docs/ADDONS.md for the contract.
 import { readdirSync } from 'node:fs';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { join } from 'node:path';
+import { getSettings } from './lib/settings.js';
 
 let cached;
 export async function loadConnectors() {
@@ -14,12 +16,12 @@ export async function loadConnectors() {
   for (const dir of dirs) {
     for (const f of readdirSync(dir).filter(f => f.endsWith('.js')).sort()) {
       const mod = await import(pathToFileURL(join(dir, f)).href);
-      const c = mod.default;
-      if (c && c.id && Array.isArray(c.kinds)) list.push(c);
+      for (const c of [].concat(mod.default || [])) if (c && c.id && Array.isArray(c.kinds)) list.push(c);
     }
   }
   cached = list;
   return list;
 }
-export const withKind = (list, kind) => list.filter(c => c.kinds.includes(kind) && typeof c[kind] === 'function');
+export const isEnabled = id => !(getSettings().disabledConnectors || []).includes(id);
+export const withKind = (list, kind) => list.filter(c => c.kinds.includes(kind) && typeof c[kind] === 'function' && isEnabled(c.id));
 export const resetRegistry = () => { cached = undefined; };
