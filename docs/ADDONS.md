@@ -98,3 +98,7 @@ Excel sheets or anything else without touching the code. The dashboard itself po
 
 Run `npm run check` on any machine with internet access to get the real answer for each.
 Full go-live steps: [SETUP-ARCTIC.md](SETUP-ARCTIC.md).
+
+## Cameras
+
+Cameras are configuration, not connectors: `config/cameras.json`, managed in Admin → Cameras. See [CAMERAS.md](CAMERAS.md).

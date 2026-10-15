@@ -18,7 +18,7 @@ npm run demo          # force demo data (presenting without internet)
 npm run check         # ping every data source and print the result
 npm run train         # learn per-tour cancellation thresholds from recorded decisions
 npm run report        # shadow-mode scorecard: model vs. duty managers
-npm test              # 43 tests
+npm test              # 49 tests
 docker compose up -d --build   # production-style run (see .env.example)
 ```
 
@@ -35,6 +35,7 @@ Opening `index.html` directly (no server) still works with the built-in syntheti
 | Road closures | Live from Vegagerðin (no key); a closed linked road forces "cancel" |
 | Guest flow (rebook / other tour / voucher / refund) | Built; EN/DE/IS; SMS via Twilio, email via Resend; **dry-run until `MESSAGING_MODE=live`** |
 | Admin page, partner API keys | Built |
+| Cameras | Built: link-outs to public cameras (Vegagerðin, Met Office) and a safe snapshot relay for **your own** cameras ([docs/CAMERAS.md](docs/CAMERAS.md)). No open-licence Icelandic camera feed was found to embed |
 | Bookings | **Live from Bókun** when keys are set; else pushed CSV/API snapshots; else demo numbers |
 | Tour list | `config/tours.json`: ships with example tours (`"demo": true`) |
 | Decisions | Duty managers record them in the dashboard with the forecast on screen |
@@ -54,10 +55,11 @@ If no weather provider is reachable the server serves clearly labelled demo data
 index.html            dashboard · admin.html admin · guest.html guest page
 src/                  front end (classic scripts: data → model → live → views → main) + styles.css
 server/index.js       static files + JSON API
+server/services/cameras.js  camera registry + SSRF-safe snapshot relay
 server/connectors/    one file per data source (openmeteo + models, metno, openweather, imo, vegagerdin, noaa, bokun, twilio, resend)
 server/services/      forecast fusion, history, bookings, roads, observations, learning, cases (guest flow), messaging, guests, policy, keys, health, ingest, demo
 server/lib/           http client, cache (stale-on-error), regions, tour sites, time helpers
-config/               tours.json (edit), thresholds.json (written by training), stations.json
+config/               tours.json, cameras.json (edit), thresholds.json (written by training), stations.json
 Dockerfile, docker-compose.yml, .env.example   deployment
 fixtures/             synthetic demo data (npm run fixtures regenerates)
 scripts/              check-connections, train, report, import-csv, make-fixtures
@@ -65,6 +67,7 @@ test/                 node:test suite
 docs/SETUP-ARCTIC.md  step-by-step go-live guide
 docs/GUEST-FLOW.md    guest messaging, rebooking, vouchers, refunds
 docs/PARTNER-API.md   API for other programs and operators
+docs/CAMERAS.md       public cameras, own cameras with open-source tools, privacy
 docs/ADDONS.md        how to add connectors
 ```
 

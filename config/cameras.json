@@ -1,0 +1,7 @@
+{
+  "cameras": [
+    { "id": "vegagerdin-umferdin", "name": "Vegagerðin road cameras (Umferðin map)", "type": "page", "source": "vegagerdin", "global": true, "tours": [], "url": "https://umferdin.is/", "attribution": "Road cameras operated by Vegagerðin", "enabled": true },
+    { "id": "imo-webcams", "name": "Icelandic Met Office webcams", "type": "page", "source": "imo", "global": true, "tours": [], "url": "https://en.vedur.is/weather/observations/webcams/other/", "attribution": "Icelandic Met Office", "enabled": true },
+    { "id": "aurora-webcams", "name": "Aurora.is webcams (cloud cover and road cameras)", "type": "page", "source": "other", "global": true, "tours": [], "url": "https://aurora.is/web-cams/", "attribution": "aurora.is, cameras by Vegagerðin", "enabled": true }
+  ]
+}

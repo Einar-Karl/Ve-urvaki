@@ -155,6 +155,7 @@ function drawDetail(all){
         <div class="oc ${R.status==="cancel"?"hl":""}" style="color:var(--cancel)"><div class="l">Aflýst</div><div class="v">${pct(R.cancel)}</div><div class="u">±${Math.round(R.unc*100)} prósentustig</div></div>
        </div></div>
       <div><h3>Spá yfir ferðartímann · ráðandi þáttur</h3>${chartFor(d)}</div>
+      ${cameraBlock(t)}
       <div><h3>Hvað ræður spánni</h3>
        <table class="fx"><tr><th>Þáttur</th><th class="num">Hámark í ferð</th><th class="num">Áhættubil</th><th class="num">Vægi</th></tr>${fx}</table>
        <p class="note" style="margin-top:6px">${extraNotes(d)}${modelNote(t)}</p></div>
@@ -180,6 +181,7 @@ function drawDetail(all){
   el.querySelectorAll(".act .btn").forEach(b=>b.onclick=()=>{done.add(b.dataset.k);drawDetail(D())});
   el.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{lang=b.dataset.l;drawDetail(D())});
   el.querySelectorAll(".decide .btn").forEach(b=>b.onclick=()=>recordOutcome(d,b.dataset.o));
+  startCams(el);
 }
 
 // ---------- status, notes, history, connections
@@ -205,6 +207,8 @@ function drawStatus(){
   b.title=live?"Veðurgögn eru sótt beint. Bókanir og verð eru enn sýnigögn.":(FC_META.demoReason||"");
   const att=[...new Set((FC_META.sources||[]).filter(s=>s.ok&&s.attribution).map(s=>s.attribution))];
   if(HIST&&HIST.mode==="live"&&HIST.attribution)att.push(HIST.attribution);
+  const gl=CAMERAS.filter(c=>c.type==="page"&&c.global);
+  $("camlinks").replaceChildren(...(gl.length?[document.createTextNode("Opinberar vefmyndavélar: "),...gl.flatMap((c,i)=>[...(i?[document.createTextNode(" · ")]:[]),Object.assign(document.createElement("a"),{href:c.url,target:"_blank",rel:"noopener noreferrer",textContent:c.name,title:c.attribution||""})])]:[]));
   $("attr").textContent=att.length?"Gagnaheimildir: "+[...new Set(att)].join(" · "):"";
 }
 
@@ -292,4 +296,34 @@ function decisionBlock(d){
     <div class="decide"><input id="who" class="who" placeholder="Nafn vaktstjóra" value="${esc(who)}" aria-label="Nafn vaktstjóra"${off}>
     <button class="btn" data-o="cancelled"${off}>Staðfesta aflýsingu</button><button class="btn" data-o="ran"${off}>Staðfesta brottför</button><button class="btn" data-o="changed"${off}>Breyting</button></div>
     <p class="note" style="margin-top:6px">${last?`Skráð: <b>${lab[last.outcome]||esc(last.outcome)}</b>${last.decidedBy?" · "+esc(last.decidedBy):""} · ${String(when.getUTCHours()).padStart(2,"0")}:${String(when.getUTCMinutes()).padStart(2,"0")}. `:"Engin ákvörðun skráð. "}${hint}</p></div>`;
+}
+
+// ---------- cameras
+// Image cameras are relayed by the server (/api/cameras/<id>/snapshot), refreshed once a minute while the
+// panel is on screen. Page cameras (Vegagerðin, Met Office…) are plain links that open in a new tab.
+let camTimers=[],camUrls=[];
+function cameraBlock(t){
+  const mine=CAMERAS.filter(c=>(c.tours||[]).some(x=>String(x)===String(t.id)));
+  const imgs=mine.filter(c=>c.type==="image"),pages=[...mine.filter(c=>c.type==="page"),...CAMERAS.filter(c=>c.type==="page"&&c.global&&!mine.includes(c))];
+  const figs=imgs.map(c=>`<figure class="cam" data-cam="${esc(c.id)}"><a class="camimg" target="_blank" rel="noopener"><span class="camstate">Sæki mynd…</span></a><figcaption><b>${esc(c.name)}</b> <span class="age"></span></figcaption></figure>`).join("");
+  const links=pages.map(c=>`<a class="btn sm" href="${esc(c.url)}" target="_blank" rel="noopener noreferrer" title="${esc(c.attribution||"")}">${esc(c.name)} ↗</a>`).join("");
+  return `<div><h3>Myndavélar</h3>${figs?`<div class="cams">${figs}</div>`:`<p class="note">Engin myndavél tengd þessari ferð. Bættu við í Stjórnun → Cameras.</p>`}${links?`<div class="camlinks">${links}</div>`:""}</div>`;
+}
+function startCams(root){
+  camTimers.forEach(clearInterval);camTimers=[];camUrls.forEach(u=>URL.revokeObjectURL(u));camUrls=[];
+  root.querySelectorAll("figure.cam").forEach(fig=>{
+    const id=fig.dataset.cam,cam=CAMERAS.find(c=>c.id===id),box=fig.querySelector(".camimg"),age=fig.querySelector(".age");
+    const load=async()=>{
+      if(!document.body.contains(fig))return;
+      try{
+        const r=await fetch(`/api/cameras/${encodeURIComponent(id)}/snapshot`);
+        if(!r.ok)throw new Error(r.status);
+        const at=new Date(r.headers.get("x-snapshot-at")),mins=Math.max(0,Math.round((Date.now()-at)/60000)),stale=r.headers.get("x-snapshot-stale")==="1"||mins>10;
+        const url=URL.createObjectURL(await r.blob());camUrls.push(url);
+        box.href=url;box.replaceChildren(Object.assign(document.createElement("img"),{src:url,alt:cam?cam.name:id,loading:"lazy"}));
+        age.textContent=mins<1?"núna":`fyrir ${mins} mín.`;age.className="age"+(stale?" old":"");if(stale)age.textContent+=" · gömul mynd";
+      }catch(e){box.replaceChildren(Object.assign(document.createElement("span"),{className:"camstate err",textContent:"Myndavél ekki tiltæk"}));age.textContent="";}
+    };
+    load();camTimers.push(setInterval(load,Math.max(30,(cam&&cam.refreshSec)||60)*1000));
+  });
 }

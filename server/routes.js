@@ -20,6 +20,7 @@ import { resetRegistry, loadConnectors, isEnabled } from './registry.js';
 import { parseCsv } from './lib/csv.js';
 import { col } from './lib/store.js';
 import { LANGS } from './lib/i18n.js';
+import * as cams from './services/cameras.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const HOUR = 3600e3;
@@ -181,6 +182,20 @@ export async function adminRoutes({ req, res, p, url, send, json }) {
       return false;
     }
     case 'roads': { if (M !== 'GET') return false; try { return ok(await getRoads({ tours: readTours().tours })); } catch (e) { return bad(send, res, 502, e.message); } }
+    case 'cameras': {
+      if (M === 'GET' && !seg[1]) return ok(cams.readCameras().map(c => ({ ...c, authSet: !!(c.authEnv && process.env[c.authEnv]) })));
+      if (M === 'PUT' && !seg[1]) { const r = cams.saveCameras((await json(req)).cameras || []); cases.audit(who, 'cameras.save', {}); return r.ok ? ok(r) : bad(send, res, 422, 'invalid cameras', { errors: r.errors }); }
+      if (M === 'POST' && !seg[1]) { const r = cams.upsertCamera(await json(req)); cases.audit(who, 'cameras.upsert', {}); return r.ok ? ok(r) : bad(send, res, 422, 'invalid camera', { errors: r.errors }); }
+      if (M === 'DELETE' && seg[1]) { const r = cams.removeCamera(decodeURIComponent(seg[1])); cases.audit(who, 'cameras.delete', { id: seg[1] }); return r.ok ? ok(r) : bad(send, res, 404, 'no such camera'); }
+      if (M === 'POST' && seg[2] === 'test') {
+        const cam = cams.readCameras().find(c => c.id === seg[1]); if (!cam) return bad(send, res, 404, 'no such camera');
+        if (cam.type === 'page') return ok({ ok: true, note: 'Link only: opened in a new tab, nothing is fetched.' });
+        const t0 = Date.now();
+        try { const img = await cams.snapshot(cam.id, { fresh: true }); return ok({ ok: true, bytes: img.buf.length, type: img.type, ms: Date.now() - t0 }); }
+        catch (e) { return ok({ ok: false, error: e.message }); }
+      }
+      return false;
+    }
     case 'audit': return M === 'GET' ? ok(cases.listAudit(+url.searchParams.get('limit') || 200)) : false;
     case 'retention': if (M === 'POST' && seg[1] === 'run') { const r = purgeExpired(); cases.audit(who, 'retention.run', r); return ok(r); } return false;
     default: return false;

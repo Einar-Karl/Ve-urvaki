@@ -268,8 +268,49 @@
     await draw(); return wrap;
   }
 
+
+  // ---------------------------------------------------------------- Cameras
+  async function cameras() {
+    const wrap = h('div', { style: 'display:grid;gap:18px' });
+    const tourList = (await api('GET', '/tours')).tours, tname = Object.fromEntries(tourList.map(t => [t.id, t.name]));
+    const load = async () => draw(await api('GET', '/cameras'));
+    const SRC = { own: 'Our own camera', vegagerdin: 'Vegagerðin', imo: 'Icelandic Met Office', partner: 'Partner', other: 'Other' };
+    const test = guard(async c => { const r = await api('POST', `/cameras/${c.id}/test`, {}); toast(r.ok ? (r.note || `Works: ${Math.round(r.bytes / 1024)} KB ${r.type} in ${r.ms} ms`) : `Failed: ${r.error}`, !r.ok); });
+    const draw = list => wrap.replaceChildren(
+      h('div', { class: 'banner' }, h('div', {}, h('b', {}, 'Two kinds of camera'), h('p', {}, 'Page: a link to a public camera page (Vegagerðin road cameras, Met Office). It opens in a new tab and is never copied, so the owner\'s terms are respected. Image: a snapshot your server fetches from YOUR OWN camera (Frigate, go2rtc, MediaMTX, MotionEye…) and shows on the dashboard. See docs/CAMERAS.md.'))),
+      h('div', { class: 'banner warn' }, h('div', {}, h('b', {}, 'Cameras film people'), h('p', {}, 'Cameras that cover guests, staff or the public need clear signs and a lawful purpose (Persónuvernd rules). Point cameras at car parks, trails and weather, not at people where you can avoid it. Never embed someone else\'s image feed without their permission.'))),
+      panel('Cameras', `${list.length} configured`, h('button', { class: 'btn primary', onclick: () => edit(null) }, 'Add camera'),
+        table([{ h: 'Camera', f: c => h('div', {}, h('b', {}, c.name), h('div', { class: 'small muted' }, `${c.id} · ${c.type === 'page' ? 'link-out page' : `image, every ${c.refreshSec || 60}s`}`)) }, { h: 'Source', f: c => SRC[c.source] || c.source },
+          { h: 'Shown for', f: c => c.global ? pill('ok', 'everyone (footer)') : (c.tours || []).length ? (c.tours || []).map(id => tname[id] || id).join(', ') : h('span', { class: 'muted' }, 'no tour yet') },
+          { h: 'Address', f: c => h('span', { class: 'small mono' }, c.url) }, { h: 'Login', f: c => c.authEnv ? pill(c.authSet ? 'ok' : 'warn', c.authSet ? 'set in .env' : `${c.authEnv} missing`) : '–' },
+          { h: 'On', f: c => sw(c.enabled !== false, guard(async on => { await api('POST', '/cameras', { ...c, enabled: on }); load(); })) },
+          { h: '', f: c => h('div', { class: 'row' }, h('button', { class: 'btn sm', onclick: () => test(c) }, 'Test'), h('button', { class: 'btn sm', onclick: () => edit(c) }, 'Edit'), h('button', { class: 'btn sm danger', onclick: guard(async () => { if (!confirm(`Remove "${c.name}"?`)) return; await api('DELETE', `/cameras/${encodeURIComponent(c.id)}`); toast('Removed'); load(); }) }, 'Remove')) }], list, 'No cameras yet.')));
+    const edit = guard(async c => {
+      const isNew = !c, v = c || { type: 'image', source: 'own', own: true, refreshSec: 60, tours: [], enabled: true };
+      const f = { id: inp(v.id, { disabled: !isNew, placeholder: 'glacier-car-park' }), name: inp(v.name, { placeholder: 'Glacier car park' }), type: sel({ image: 'Image snapshot (our own camera)', page: 'Link to a public page' }, v.type), source: sel(SRC, v.source), url: inp(v.url, { placeholder: 'https://…' }),
+        refresh: inp(v.refreshSec || 60, { type: 'number', min: 15, max: 3600 }), auth: inp(v.authEnv || '', { placeholder: 'CAM_GLACIER_AUTH' }), attr: inp(v.attribution || ''), perm: inp(v.permission || '', { placeholder: 'Licence or written permission that allows showing this image' }) };
+      const own = h('input', { type: 'checkbox', checked: v.own !== false && v.type === 'image' }), glob = h('input', { type: 'checkbox', checked: !!v.global });
+      const picked = new Set((v.tours || []).map(Number));
+      const tourBoxes = h('div', { class: 'tags' }, tourList.map(t => h('label', { class: 'check small' }, h('input', { type: 'checkbox', checked: picked.has(t.id), onchange: e => (e.target.checked ? picked.add(t.id) : picked.delete(t.id)) }), t.name)));
+      const prev = h('div');
+      dialog(isNew ? 'Add camera' : `Edit · ${v.name}`, h('div', {}, h('div', { class: 'form' }, field('ID', f.id, 'Short name, lowercase'), field('Name', f.name), field('Type', f.type), field('Source', f.source), field('Address (URL)', f.url, 'Image: the snapshot (JPEG) address. Page: the web page', true),
+        field('Refresh (seconds)', f.refresh, 'Image cameras only, 15–3600'), field('Login variable', f.auth, 'Name of a variable in .env holding the full Authorization header value, e.g. Basic dXNlcjpwdw==. Never paste passwords here'),
+        field('Credit shown', f.attr), field('Permission (third-party images only)', f.perm, 'Required if this is not our own camera', true),
+        h('label', { class: 'check full' }, own, 'This is our own camera'), h('label', { class: 'check full' }, glob, 'Show as a link for everyone (dashboard footer), not for specific tours'),
+        h('div', { class: 'full' }, h('b', {}, 'Show on these tours'), tourBoxes)), prev),
+        [{ label: 'Cancel', run: () => true }, { label: 'Save and test', primary: true, run: guard(async () => {
+          const cam = { ...(c || {}), id: f.id.value.trim(), name: f.name.value.trim(), type: f.type.value, source: f.source.value, url: f.url.value.trim(), attribution: f.attr.value, own: own.checked, global: glob.checked, tours: [...picked], enabled: true };
+          if (cam.type === 'image') { cam.refreshSec = +f.refresh.value || 60; cam.permission = f.perm.value; } else { delete cam.refreshSec; delete cam.permission; }
+          if (f.auth.value.trim()) cam.authEnv = f.auth.value.trim(); else delete cam.authEnv;
+          await api('POST', '/cameras', cam); toast('Camera saved'); load();
+          if (cam.type === 'image') { const r = await api('POST', `/cameras/${cam.id}/test`, {}); toast(r.ok ? `Test OK (${Math.round(r.bytes / 1024)} KB)` : `Saved, but the test failed: ${r.error}`, !r.ok); }
+        }) }]);
+    });
+    await load(); return wrap;
+  }
+
   // ---------------------------------------------------------------- Router
-  const ROUTES = [['overview', 'Overview', overview, '◎'], ['notifications', 'Notifications', notifications, '✉'], ['requests', 'Guest requests', requests, '☑'], ['tours', 'Tours', tours, '⛰'], ['guests', 'Guests', guests, '☺'], ['connections', 'Connections', connections, '⇄'], ['model', 'Model', model, '∿'], ['settings', 'Settings', settings, '⚙'], ['partners', 'Partners & API', partners, '⌘'], ['activity', 'Activity', activity, '≡']];
+  const ROUTES = [['overview', 'Overview', overview, '◎'], ['notifications', 'Notifications', notifications, '✉'], ['requests', 'Guest requests', requests, '☑'], ['tours', 'Tours', tours, '⛰'], ['cameras', 'Cameras', cameras, '◉'], ['guests', 'Guests', guests, '☺'], ['connections', 'Connections', connections, '⇄'], ['model', 'Model', model, '∿'], ['settings', 'Settings', settings, '⚙'], ['partners', 'Partners & API', partners, '⌘'], ['activity', 'Activity', activity, '≡']];
   $('#nav').replaceChildren(...ROUTES.map(([id, label, , ico]) => h('a', { href: `#${id}`, 'data-id': id }, h('span', { 'aria-hidden': 'true' }, ico), label)));
   async function render() {
     const id = location.hash.slice(1) || 'overview', r = ROUTES.find(x => x[0] === id) || ROUTES[0];

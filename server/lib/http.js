@@ -2,6 +2,8 @@
 // MET Norway requires an identifying User-Agent; set VEDURVAKI_UA="Vedurvaki/0.4 you@example.com".
 let impl = (...a) => fetch(...a);
 export const setFetch = fn => { impl = fn; };
+// Raw access for callers that need redirects/streams under their own control (camera snapshots).
+export const fetchRaw = (...a) => impl(...a);
 
 export const USER_AGENT = process.env.VEDURVAKI_UA || 'Vedurvaki/0.4 (+https://github.com/Einar-Karl/Ve-urvaki)';
 

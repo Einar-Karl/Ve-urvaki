@@ -25,6 +25,7 @@ import { append, read, toCsvEU, KINDS } from './services/ingest.js';
 import { getBookings } from './services/bookings.js';
 import { getRoads } from './services/roads.js';
 import { getObservations } from './services/observations.js';
+import { publicList as camerasPublic, snapshot as cameraSnapshot } from './services/cameras.js';
 import { loadModel } from './services/model.js';
 import { readTours, buildSites, sitesSignature } from './lib/sites.js';
 import { check as checkAuth } from './lib/auth.js';
@@ -81,6 +82,15 @@ export function createServer() {
       if (p === '/admin') return send(res, 200, await readFile(join(ROOT, 'admin.html')), 'text/html; charset=utf-8');
       if (p === '/api/tours') { const { demo, tours, warnings } = siteSet(); return send(res, 200, { demo, tours, warnings }); }
       if (p === '/api/model') return send(res, 200, loadModel());
+      if (p === '/api/cameras') return send(res, 200, camerasPublic());
+      const cm = p.match(/^\/api\/cameras\/([\w-]+)\/snapshot$/);
+      if (cm) {
+        let img;
+        try { img = await cameraSnapshot(cm[1], { fresh: url.searchParams.has('fresh') && req.auth.role === 'admin' }); } catch (e) { return send(res, 502, { error: e.message }); }
+        if (!img) return send(res, 404, { error: 'no such camera' });
+        res.setHeader('X-Snapshot-At', new Date(img.at).toISOString()); res.setHeader('X-Snapshot-Stale', img.stale ? '1' : '0');
+        return send(res, 200, img.buf, img.type);
+      }
       if (p === '/api/bookings') return send(res, 200, await getBookings({ tours: siteSet().tours }));
       if (p === '/api/forecast') return send(res, 200, await getForecast({ mode, sites: siteSet().sites }));
       if (p === '/api/history') return send(res, 200, await getHistory({ mode, sites: siteSet().sites }));

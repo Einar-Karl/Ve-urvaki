@@ -204,7 +204,9 @@ Full detail in [GUEST-FLOW.md](GUEST-FLOW.md) and [PARTNER-API.md](PARTNER-API.m
 | 17 | Native-speaker read of German and Icelandic guest text; privacy notice and processor agreements | Arctic | a colleague/translator; whoever handles GDPR |
 | 18 | `MESSAGING_MODE=live` | You | the above |
 
-**Admin page** (`/admin`): Overview (setup checklist), Notifications, Guest requests, Tours, Guests, Connections, Model, Settings,
+**Cameras** (optional): see [CAMERAS.md](CAMERAS.md). Public camera pages are link-outs; your own cameras at tour sites show as live pictures next to each departure.
+
+**Admin page** (`/admin`): Overview (setup checklist), Notifications, Guest requests, Tours, Cameras, Guests, Connections, Model, Settings,
 Partners & API keys, Activity. Give other programs their own key under *Partners & API*.
 
 ## Operating it

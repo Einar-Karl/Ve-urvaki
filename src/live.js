@@ -8,6 +8,7 @@ let KP=null;              // NOAA Kp series
 let ROADS=null;           // /api/roads: { byTour, blocked } from Vegagerðin
 let HEALTH=null;          // connector status list
 let MODEL=null;           // learned thresholds from /api/model
+let CAMERAS=[];           // /api/cameras: image cameras (relayed) and link-out pages
 let TOUR_WARNINGS=[];     // problems found in config/tours.json
 let TOURS_DEMO=true;      // config/tours.json still has "demo": true (example tours)
 const DECISIONS={};       // "tourId|departureISO" → last recorded outcome
@@ -47,6 +48,7 @@ async function loadData(){
   await Promise.all([
     opt("/api/bookings",j=>{BOOKINGS=j}),
     opt("/api/model",j=>{MODEL=j}),
+    opt("/api/cameras",j=>{CAMERAS=j}),
     opt("/api/history",j=>{HIST=j}),
     opt("/api/observations",j=>{OBS=j.regions||null}),
     opt("/api/aurora",j=>{KP=j.series||null}),
