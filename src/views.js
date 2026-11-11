@@ -4,6 +4,8 @@
 const P=([lon,lat])=>[(lon+24.75)*40,(66.72-lat)*40*2.25];
 function gustCol(g){return g>=27?"var(--cancel)":g>=20?"var(--change)":"var(--faint)"}
 function drawMap(){
+  if(typeof mapEnabled==='function'&&mapEnabled()){try{drawLeafletMap();return}catch(e){console.error(e)}}
+  {const lm=document.getElementById('lmap');if(lm)lm.hidden=true;document.getElementById('map').style.display='';}
   const svg=document.getElementById("map");const pts=COAST.map(P);
   let h=`<defs><clipPath id="isl"><path d="M${pts.map(p=>p.join(",")).join("L")}Z"/></clipPath>
    <pattern id="gr" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" fill="none" stroke="var(--sea2)" stroke-width=".6"/></pattern></defs>

@@ -58,6 +58,7 @@ export function validateCamera(c) {
     if (c.refreshSec != null && !(c.refreshSec >= 15 && c.refreshSec <= 3600)) e.push(`${n}: refreshSec must be between 15 and 3600`);
     if (!c.own && !String(c.permission || '').trim()) e.push(`${n}: a third-party image needs "permission": the licence or written permission that allows showing it`);
   }
+  if ((c.lat != null || c.lon != null) && !(Number.isFinite(c.lat) && Number.isFinite(c.lon) && c.lat >= 62 && c.lat <= 68 && c.lon >= -26 && c.lon <= -12)) e.push(`${n}: lat/lon must be numbers inside Iceland`);
   if (c.authEnv != null && c.authEnv !== '' && !/^[A-Z][A-Z0-9_]*$/.test(c.authEnv)) e.push(`${n}: authEnv must be an environment variable name like CAM_FRIGATE_AUTH`);
   return e;
 }
@@ -84,7 +85,7 @@ export const removeCamera = id => { const cur = readCameras(), next = cur.filter
 // What the dashboard may see: never the snapshot URL or credentials of an image camera.
 export const publicList = () => readCameras().filter(c => c.enabled !== false).map(c => ({
   id: c.id, name: c.name, type: c.type, source: c.source || 'other', tours: c.tours || [], global: !!c.global, attribution: c.attribution || '',
-  refreshSec: c.refreshSec || 60, ...(c.type === 'page' ? { url: c.url } : {}),
+  refreshSec: c.refreshSec || 60, ...(Number.isFinite(c.lat) ? { lat: c.lat, lon: c.lon } : {}), ...(c.type === 'page' ? { url: c.url } : {}),
 }));
 
 // ---- snapshot relay ----

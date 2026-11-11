@@ -1,9 +1,11 @@
 // Managed API keys for other programs (booking tools, partners, Zapier). Shown once at creation, stored
-// hashed, revocable. Scopes: "ingest" (POST /api/ingest/*), "tours" (GET/PUT /api/partner/tours).
+// hashed, revocable, each with the smallest set of scopes it needs (see SCOPES).
 import { col } from '../lib/store.js';
 import { newId, newToken, sha256 } from '../lib/tokens.js';
 
-export const SCOPES = ['ingest', 'tours'];
+// read: risk, conditions, departures, tours, cameras, roads · ingest: push guests/bookings/outcomes ·
+// tours: create/update tours · webhooks: manage webhook subscriptions
+export const SCOPES = ['read', 'ingest', 'tours', 'webhooks'];
 const keys = () => col('keys');
 
 export function createKey({ name, scopes = ['ingest'] }) {

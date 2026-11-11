@@ -1,5 +1,8 @@
 # Partner API: send your tours, bookings and guests
 
+> The versioned **API v1** (`/api/v1`, Bearer keys, webhooks, OpenAPI) is the recommended way for software companies:
+> see [INTEGRATION.md](INTEGRATION.md). The endpoints below keep working.
+
 For other programs (a booking tool, Zapier/Make, a spreadsheet script) or another operator's system to put
 their data into Veðurvaki.
 
@@ -15,6 +18,8 @@ revoked at any time, and carry permissions:
 |---|---|
 | *send data* (`ingest`) | `POST /api/ingest/guests`, `/bookings`, `/outcomes`, `/events` |
 | *edit tours* (`tours`) | `GET` / `PUT /api/partner/tours` |
+| *read* (`read`) | API v1 read endpoints: conditions, risk, departures, cameras, roads, grid |
+| *webhooks* (`webhooks`) | manage webhook subscriptions (API v1) |
 
 A key cannot read guest records back, cannot use the admin page, and cannot call any other endpoint. Always send
 `Content-Type: application/json` and use HTTPS.

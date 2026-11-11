@@ -1,5 +1,6 @@
 // Open-Meteo: forecast (best-match model), marine waves, ERA5 archive for history, plus one connector
-// per individual weather model (ECMWF IFS, DWD ICON, NOAA GFS by default; OPENMETEO_MODELS to change,
+// per individual weather model (ECMWF IFS, DWD ICON, NOAA GFS and the 2 km DMI HARMONIE-AROME, which covers
+// Iceland for ~2.5 days, by default; OPENMETEO_MODELS to change,
 // empty to disable). Each model is its own source, so the gap between models becomes the forecast
 // uncertainty. Free tier is non-commercial only: for a commercial product set OPENMETEO_API_KEY
 // (switches to the paid "customer-" hosts and appends &apikey=).
@@ -32,8 +33,9 @@ export function toRegionMap(ids, list, cols, model) {
   return out;
 }
 
-const FC_COLS = { g: 'wind_gusts_10m', w: 'wind_speed_10m', dir: 'wind_direction_10m', p: 'precipitation', c: 'cloud_cover', t: 'temperature_2m' };
-const HOURLY = 'temperature_2m,precipitation,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m';
+// v = visibility in metres (not every model provides it; missing values stay null and are ignored by fusion)
+const FC_COLS = { g: 'wind_gusts_10m', w: 'wind_speed_10m', dir: 'wind_direction_10m', p: 'precipitation', c: 'cloud_cover', t: 'temperature_2m', v: 'visibility' };
+const HOURLY = 'temperature_2m,precipitation,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility';
 
 async function forecastFor(sites, model) {
   const ids = Object.keys(sites);
@@ -86,6 +88,7 @@ const primary = {
 const MODEL_LABELS = {
   ecmwf_ifs025: 'ECMWF IFS', icon_seamless: 'DWD ICON', gfs_seamless: 'NOAA GFS', ukmo_seamless: 'UK Met Office',
   meteofrance_seamless: 'Météo-France', gem_seamless: 'Environment Canada GEM', jma_seamless: 'JMA',
+  dmi_harmonie_arome_europe: 'DMI HARMONIE 2 km', dmi_seamless: 'DMI (HARMONIE + ECMWF)',
 };
 
 export const modelConnector = model => ({
@@ -104,5 +107,5 @@ export const modelConnector = model => ({
   },
 });
 
-const models = (process.env.OPENMETEO_MODELS ?? 'ecmwf_ifs025,icon_seamless,gfs_seamless').split(',').map(s => s.trim()).filter(Boolean);
+const models = (process.env.OPENMETEO_MODELS ?? 'ecmwf_ifs025,icon_seamless,gfs_seamless,dmi_harmonie_arome_europe').split(',').map(s => s.trim()).filter(Boolean);
 export default [primary, ...models.map(modelConnector)];

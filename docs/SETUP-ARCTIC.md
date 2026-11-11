@@ -132,6 +132,10 @@ docker compose logs -f                           # expect: "Veðurvaki → http:
 `arctic` (or `DASHBOARD_USER`) and that password. `INGEST_TOKEN` lets other systems POST data.
 Without Docker: `npm run start:env` (Node 20+).
 
+**Map (Mapbox):** create a free account at mapbox.com → *Access tokens* → create a **public** token (starts
+with `pk.`), add your dashboard's domain under *URL restrictions*, and put it in `MAPBOX_TOKEN`. Never use a
+secret `sk.` token (the server refuses it). Choose the style in Admin → Settings → Map.
+
 `data/` (recorded decisions and pushed bookings) is the training data: **back it up**.
 It holds guest *counts* only, no names or contact details.
 

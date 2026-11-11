@@ -178,7 +178,7 @@ test('HTTP: guest endpoints are public, admin is separate, CSRF and rate limits 
     const k = await (await fetch(`${base}/api/admin/keys`, { method: 'POST', body: JSON.stringify({ name: 'Zapier', scopes: ['ingest'] }), headers: { ...basic('admin', 'adm'), ...J } })).json();
     assert.match(k.key, /^vv_/); assert.equal(k.hash, undefined);
     const tourBody = JSON.stringify({ id: 99, name: 'Partner tour', type: 'hike', lat: 64.1, lon: -21.9, departures: ['10:00'], durationHours: 2, capacity: 10, priceISK: 5000 });
-    assert.equal((await fetch(`${base}/api/partner/tours`, { method: 'PUT', body: tourBody, headers: { 'x-api-key': k.key, ...J } })).status, 401);   // ingest scope cannot edit tours
+    assert.equal((await fetch(`${base}/api/partner/tours`, { method: 'PUT', body: tourBody, headers: { 'x-api-key': k.key, ...J } })).status, 403);   // ingest scope cannot edit tours (authenticated, not allowed)
     assert.equal((await fetch(`${base}/api/ingest/guests`, { method: 'POST', body: JSON.stringify(guest({ ref: 'ZZ-9' })), headers: { 'x-api-key': k.key } })).status, 202);
     assert.equal((await fetch(`${base}/api/ingest/guests`, { headers: { 'x-api-key': k.key } })).status, 405);   // key holders cannot read guests back
     assert.equal((await fetch(`${base}/api/admin/overview`, { headers: { 'x-api-key': k.key } })).status, 401);

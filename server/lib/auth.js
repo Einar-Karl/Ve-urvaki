@@ -8,7 +8,7 @@ import { safeEq } from './tokens.js';
 import { verifyKey } from '../services/keys.js';
 
 const env = k => process.env[k];
-const PUBLIC = [/^\/healthz$/, /^\/g\/[\w-]+$/, /^\/guest\.html$/, /^\/src\/guest[\w.-]*$/, /^\/src\/shared[\w.-]*$/, /^\/api\/guest\//, /^\/favicon\.ico$/];
+const PUBLIC = [/^\/healthz$/, /^\/api\/v1\/?$/, /^\/api\/v1\/openapi\.json$/, /^\/g\/[\w-]+$/, /^\/guest\.html$/, /^\/src\/guest[\w.-]*$/, /^\/src\/shared[\w.-]*$/, /^\/api\/guest\//, /^\/favicon\.ico$/];
 const ADMIN = [/^\/admin(\.html)?$/, /^\/src\/admin[\w.-]*$/, /^\/api\/admin\//];
 
 export const isPublic = p => PUBLIC.some(r => r.test(p));
@@ -25,14 +25,15 @@ const matches = (c, user, pass) => c && pass != null && safeEq(c.user, user) && 
 export function check(req, p) {
   if (isPublic(p)) return { ok: true, who: 'public' };
 
-  const key = req.headers['x-api-key'];
+  const key = req.headers['x-api-key'] || (/^Bearer\s+(vv_\S+)$/.exec(req.headers.authorization || '') || [])[1];
   if (key) {
-    const need = p.startsWith('/api/ingest/') ? 'ingest' : p.startsWith('/api/partner/tours') ? 'tours' : p.startsWith('/api/partner/') ? 'ingest' : null;
-    if (!need) return { ok: false, realm: 'Veðurvaki', reason: 'API keys only work on /api/ingest/* and /api/partner/*' };
-    if (env('INGEST_TOKEN') && safeEq(key, env('INGEST_TOKEN')) && need === 'ingest') return { ok: true, who: 'key:env', role: 'key' };
+    const need = scopeFor(req.method, p);
+    if (!need) return { ok: false, realm: 'Veðurvaki', reason: 'API keys only work on /api/v1/*, /api/ingest/* and /api/partner/*' };
+    if (env('INGEST_TOKEN') && safeEq(key, env('INGEST_TOKEN'))) return need === 'ingest' ? { ok: true, who: 'key:env', role: 'key', keyId: 'env', scopes: ['ingest'] } : { ok: false, realm: 'Veðurvaki', status: 403, reason: `this key lacks the "${need}" scope` };
     const k = verifyKey(key);
-    if (k && (k.scopes.includes(need) || (need === 'ingest' && k.scopes.includes('tours') && p.startsWith('/api/partner/')))) return { ok: true, who: `key:${k.name}`, role: 'key' };
-    return { ok: false, realm: 'Veðurvaki', reason: 'invalid, revoked or insufficiently scoped API key' };
+    if (!k) return { ok: false, realm: 'Veðurvaki', reason: 'invalid or revoked API key' };
+    if (!k.scopes.includes(need)) return { ok: false, realm: 'Veðurvaki', status: 403, reason: `this key lacks the "${need}" scope` };
+    return { ok: true, who: `key:${k.name}`, role: 'key', keyId: k.id, scopes: k.scopes };
   }
 
   const dash = env('DASHBOARD_PASSWORD'), adm = env('ADMIN_PASSWORD');
@@ -52,4 +53,15 @@ export function check(req, p) {
   }
   if (dashOk() || admOk()) return { ok: true, who: `user:${c.user}`, role: 'dashboard' };
   return { ok: false, realm: 'Veðurvaki' };
+}
+
+// Which key scope a request needs (null = API keys are not accepted there).
+export function scopeFor(method, p) {
+  if (p.startsWith('/api/ingest/')) return 'ingest';
+  if (p.startsWith('/api/partner/tours')) return 'tours';
+  if (!p.startsWith('/api/v1/')) return null;
+  if (p.startsWith('/api/v1/webhooks')) return 'webhooks';
+  if (p === '/api/v1/tours' && method !== 'GET') return 'tours';
+  if (/^\/api\/v1\/(guests|bookings|outcomes|events)$/.test(p) && method === 'POST') return 'ingest';
+  return 'read';
 }

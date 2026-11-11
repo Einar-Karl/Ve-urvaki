@@ -30,7 +30,11 @@ import { loadModel } from './services/model.js';
 import { readTours, buildSites, sitesSignature } from './lib/sites.js';
 import { check as checkAuth, isPublic as isPublicPath } from './lib/auth.js';
 import { scheduleNightly } from './services/train.js';
+import { emit, scheduleWebhooks, processDue } from './services/webhooks.js';
+import { scheduleWatcher, maybeCheck } from './services/watcher.js';
 import { guestRoutes, partnerRoutes, adminRoutes } from './routes.js';
+import { v1Routes } from './api-v1.js';
+import { getSettings, mapConfig } from './lib/settings.js';
 import { upsertGuests, scheduleRetention } from './services/guests.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -84,14 +88,16 @@ export const handler = async (req, res) => {
       if (process.env.VERCEL && !process.env.DASHBOARD_PASSWORD && !process.env.ADMIN_PASSWORD && !isPublicPath(p))
         return send(res, 503, { error: 'Locked: set DASHBOARD_PASSWORD (and ADMIN_PASSWORD) in the Vercel project settings, then redeploy.' });
       const auth = checkAuth(req, p);
-      if (!auth.ok) { res.setHeader('WWW-Authenticate', `Basic realm="${auth.realm}", charset="UTF-8"`); return send(res, 401, { error: auth.reason || 'authentication required' }); }
+      if (!auth.ok) { if ((auth.status || 401) === 401) res.setHeader('WWW-Authenticate', `Basic realm="${auth.realm}", charset="UTF-8"`); return send(res, auth.status || 401, { error: auth.reason || 'authentication required' }); }
       req.auth = auth;
       const rctx = { req, res, p, url, send, json: jsonBody };
-      if (await guestRoutes(rctx) || await partnerRoutes(rctx) || await adminRoutes(rctx)) return;
+      if (process.env.VERCEL) { processDue().catch(() => {}); maybeCheck(); }   // no background timers on Vercel
+      if (await v1Routes(rctx) || await guestRoutes(rctx) || await partnerRoutes(rctx) || await adminRoutes(rctx)) return;
       if (p === '/admin') return send(res, 200, await readFile(join(ROOT, 'admin.html')), 'text/html; charset=utf-8');
       if (p === '/api/tours') { const { demo, tours, warnings } = siteSet(); return send(res, 200, { demo, tours, warnings }); }
       if (p === '/api/model') return send(res, 200, loadModel());
       if (p === '/api/cameras') return send(res, 200, camerasPublic());
+      if (p === '/api/map') return send(res, 200, mapConfig());
       const cm = p.match(/^\/api\/cameras\/([\w-]+)\/snapshot$/);
       if (cm) {
         let img;
@@ -117,7 +123,11 @@ export const handler = async (req, res) => {
           if (req.method !== 'POST') return send(res, 405, { error: 'guest records are write-only here; read them in the admin page' });
           const b = await jsonBody(req); const r = upsertGuests(Array.isArray(b) ? b : [b]); return send(res, r.ok ? 202 : 422, r);
         }
-        if (req.method === 'POST') { const r = append(m[1], await jsonBody(req)); return send(res, r.ok ? 202 : 422, r); }
+        if (req.method === 'POST') {
+          const b = await jsonBody(req), r = append(m[1], b);
+          if (r.ok && m[1] === 'outcomes') for (const o of [].concat(b)) emit('decision.recorded', { tourId: o.tourId, departure: o.departure, outcome: o.outcome, decidedBy: o.decidedBy || null, mode: o.mode || null });
+          return send(res, r.ok ? 202 : 422, r);
+        }
         const rows = read(m[1], +url.searchParams.get('limit') || 100);
         return m[2] ? send(res, 200, toCsvEU(rows), 'text/csv; charset=utf-8') : send(res, 200, rows);
       }
@@ -137,7 +147,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = +process.env.PORT || 8080;
   createServer().listen(port, () => {
     console.log(`Veðurvaki → http://localhost:${port}  (DATA_MODE=${process.env.DATA_MODE || 'auto'})`);
-    scheduleRetention();
+    scheduleRetention(); scheduleWebhooks(); scheduleWatcher();
     if (process.env.AUTO_TRAIN === '1') { scheduleNightly(); console.log('Nightly threshold training enabled (03:30 UTC).'); }
     if (process.env.MESSAGING_MODE !== 'live') console.log('Guest messaging is in DRY-RUN mode: messages are stored in the outbox, not sent (set MESSAGING_MODE=live).');
     if (!process.env.DASHBOARD_PASSWORD) console.warn('WARNING: DASHBOARD_PASSWORD is not set — the dashboard and API are open to anyone who can reach this port.');

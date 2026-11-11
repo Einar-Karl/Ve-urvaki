@@ -21,6 +21,7 @@ import { parseCsv } from './lib/csv.js';
 import { col } from './lib/store.js';
 import { LANGS } from './lib/i18n.js';
 import * as cams from './services/cameras.js';
+import * as wh from './services/webhooks.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const HOUR = 3600e3;
@@ -71,26 +72,7 @@ export async function partnerRoutes({ req, res, p, send, json }) {
   return false;
 }
 
-// ---- upcoming departures with risk, guests and cases: the basis of the Notifications tab ----
-async function upcomingDepartures() {
-  const ctx = await riskCtx(), { tours: list } = readTours();
-  const now = Date.now(), out = [];
-  const b = await getBookings({ tours: list, days: 4 });
-  const pax = new Map(b.departures.map(d => [`${d.tourId}|${new Date(d.departure).toISOString()}`, d.pax]));
-  const day0 = new Date(now); day0.setUTCHours(0, 0, 0, 0);
-  for (const t of list) for (let d = 0; d < 3; d++) for (const hhmm of t.departures || []) {
-    const iso = new Date(day0.getTime() + d * 86400e3 + (parseInt(hhmm, 10) * 60 + parseInt(hhmm.split(':')[1] || 0, 10)) * 60e3).toISOString();
-    if (Date.parse(iso) < now - HOUR) continue;
-    const R = ctx ? ctx.riskAt(t.id, iso) : null;
-    const gs = listGuests({ tourId: t.id, departure: iso });
-    const cs = cases.listCases({ tourId: t.id, departure: iso });
-    out.push({ tourId: t.id, tourName: t.name, departure: iso, cancel: R ? R.cancel : null, status: R ? R.status : null, road: R && R.road ? R.road : null,
-      reason: R ? cases.reasonFrom(R, ctx.factors(t.id)) : null, bookedPax: pax.get(`${t.id}|${iso}`) ?? null,
-      guests: gs.length, guestPax: gs.reduce((s, g) => s + g.pax, 0), reachable: gs.filter(g => g.email || g.phone).length,
-      cases: cs.length, casesSent: cs.filter(c => c.state !== 'prepared').length, deadline: cases.decisionDeadline(iso) });
-  }
-  return { forecastMode: ctx ? ctx.forecastMode : 'unavailable', departures: out.sort((a, b) => (b.cancel ?? -1) - (a.cancel ?? -1) || a.departure.localeCompare(b.departure)) };
-}
+import { upcomingDepartures } from './services/departures.js';
 
 const requestsCsv = () => toCsvEU(cases.listCases().filter(c => c.choice).map(c => ({
   case: c.id, booking: c.ref, guest: c.guest?.name || '', email: c.guest?.email || '', tour: c.tourName, departure: c.departure, type: c.choice.type, status: c.choice.status,
@@ -194,6 +176,15 @@ export async function adminRoutes({ req, res, p, url, send, json }) {
         try { const img = await cams.snapshot(cam.id, { fresh: true }); return ok({ ok: true, bytes: img.buf.length, type: img.type, ms: Date.now() - t0 }); }
         catch (e) { return ok({ ok: false, error: e.message }); }
       }
+      return false;
+    }
+    case 'webhooks': {
+      if (M === 'GET' && !seg[1]) return ok({ events: wh.EVENTS, subscriptions: wh.listSubscriptions() });
+      if (M === 'POST' && !seg[1]) { try { const r = await wh.createSubscription(await json(req), who); cases.audit(who, 'webhook.create', { url: r.url }); return ok(r); } catch (e) { return bad(send, res, 400, e.message); } }
+      if (M === 'DELETE' && seg[1]) { const r = wh.deleteSubscription(seg[1]); cases.audit(who, 'webhook.delete', { id: seg[1] }); return r ? ok() : bad(send, res, 404, 'no such webhook'); }
+      if (M === 'PUT' && seg[1]) { const r = wh.setActive(seg[1], (await json(req)).active); return r ? ok(r) : bad(send, res, 404, 'no such webhook'); }
+      if (M === 'POST' && seg[2] === 'test') { const r = await wh.sendTest(seg[1]); return r ? ok(r) : bad(send, res, 404, 'no such webhook'); }
+      if (M === 'GET' && seg[2] === 'deliveries') return ok(wh.listDeliveries(seg[1]));
       return false;
     }
     case 'audit': return M === 'GET' ? ok(cases.listAudit(+url.searchParams.get('limit') || 200)) : false;

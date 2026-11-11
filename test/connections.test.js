@@ -17,7 +17,7 @@ const json = (obj, status = 200) => ({ ok: status < 400, status, json: async () 
 const hours = n => Array.from({ length: n }, (_, i) => `2026-10-14T${String(i % 24).padStart(2, '0')}:00`);
 
 test('registry: Open-Meteo yields the primary connector plus one per model, each its own source', async () => {
-  assert.deepEqual(omList.map(c => c.id), ['openmeteo', 'openmeteo-ecmwf_ifs025', 'openmeteo-icon_seamless', 'openmeteo-gfs_seamless']);
+  assert.deepEqual(omList.map(c => c.id), ['openmeteo', 'openmeteo-ecmwf_ifs025', 'openmeteo-icon_seamless', 'openmeteo-gfs_seamless', 'openmeteo-dmi_harmonie_arome_europe']);
   const all = await loadConnectors();
   const fc = withKind(all, 'forecast').map(c => c.id);
   for (const id of ['openmeteo', 'metno', 'openmeteo-ecmwf_ifs025', 'openweather']) assert.ok(fc.includes(id), id);

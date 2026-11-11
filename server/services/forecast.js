@@ -1,5 +1,5 @@
 // Fuses every forecast connector into one normalized hourly series per region:
-//   { g gust m/s, w wind m/s, dir deg (from), p precip mm/h, c cloud %, t °C, s wave m, sp gust spread m/s }
+//   { g gust m/s, w wind m/s, dir deg (from), p precip mm/h, c cloud %, t °C, v visibility km, s wave m, sp gust spread m/s }
 // `sp` is the disagreement between sources (max - min gust). The risk model widens its
 // uncertainty with it, so two models that disagree produce a less confident cancel call.
 import { memo } from '../lib/cache.js';
@@ -29,6 +29,8 @@ export function fuse(keys, sources, marine, ids) {
           g: round(g), w: round(avg(vals(rows, 'w'))), dir: round(rows.find(r => r.dir != null)?.dir ?? last?.dir ?? 0, 0),
           p: round(avg(vals(rows, 'p')) ?? 0), c: round(avg(vals(rows, 'c')) ?? 0, 0), t: round(avg(vals(rows, 't')) ?? 0),
           sp: gusts.length > 1 ? round(Math.max(...gusts) - Math.min(...gusts)) : 0,
+          // visibility in km (min across sources: the cautious value), null when no source has it
+          v: vals(rows, 'v').length ? round(Math.min(...vals(rows, 'v')) / 1000) : null,
         };
       } else if (last) o = { ...last }; // gap (e.g. beyond one source's horizon): hold last value
       else continue;

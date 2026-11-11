@@ -11,6 +11,7 @@ import { readTours } from '../lib/sites.js';
 import { getBookings } from './bookings.js';
 import { listGuests, getGuest } from './guests.js';
 import { compose, deliver, guestLink, reasonText } from './messaging.js';
+import { emit } from './webhooks.js';
 
 const cases = () => col('cases'), vouchers = () => col('vouchers'), auditCol = () => col('audit');
 const HOUR = 3600e3, DAY = 86400e3;
@@ -226,6 +227,7 @@ export async function choose(token, body, { ctx, nowMs = Date.now() } = {}) {
   const next = { ...c, choice, history: prev, state: 'responded' };
   cases().put(next);
   audit(`guest:${g.ref}`, 'guest.choose', { id: c.id, type, departure: choice.departure });
+  emit('guest.choice_made', { caseId: c.id, bookingRef: g.ref, tourId: c.tourId, departure: c.departure, kind: c.kind, choice: { type, departure: choice.departure || null, tourId: choice.tourId ?? null, amountISK: choice.amountISK ?? null }, pax: g.pax });
   const lang = langOf(g);
   if (policy.autoApprove[type]) await resolve(c.id, 'approve', 'auto-approved by policy', 'system');
   else await notify('confirm', cases().get(c.id), g, lang);
@@ -266,6 +268,7 @@ export async function resolve(id, action, note, who) {
     cases().put(c);
   } else throw new Error('action must be approve, done, reject or reopen');
   audit(who, `case.${action}`, { id, note: note || '' });
+  emit('case.resolved', { caseId: c.id, bookingRef: c.ref, tourId: c.tourId, departure: c.departure, action, choice: c.choice ? { type: c.choice.type, status: c.choice.status, departure: c.choice.departure || null, tourId: c.choice.tourId ?? null, amountISK: c.choice.amountISK ?? null, voucherCode: c.choice.voucherCode || null } : null });
   return c;
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "ve-urvaki",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Weather-risk operations dashboard for Icelandic tour operators, with a pluggable data-connector layer",
@@ -17,6 +17,7 @@
     "train": "node scripts/train.js",
     "import:outcomes": "node scripts/import-csv.js outcomes",
     "import:bookings": "node scripts/import-csv.js bookings",
-    "report": "node scripts/report.js"
+    "report": "node scripts/report.js",
+    "openapi": "node scripts/openapi.js"
   }
 }
