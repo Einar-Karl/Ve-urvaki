@@ -48,6 +48,7 @@
       [s.brand.phone || s.brand.email, 'Add contact details for guests', 'Phone / email shown to guests who need help. Set them under Settings.', 'settings'],
     ];
     return [
+      o.ephemeralStorage ? h('div', { class: 'banner bad' }, h('div', {}, h('b', {}, 'Temporary storage (Vercel)'), h('p', {}, 'Guests, decisions, tours and settings are kept only in this server instance\'s temporary memory and are LOST when it restarts or scales. Use this deployment for a demo. For real use, run the Docker setup on a host with a disk, or connect a database.'))) : null,
       h('div', { class: `banner ${live ? 'good' : 'warn'}` }, h('div', {}, h('b', {}, live ? 'Guest messaging is LIVE' : 'Guest messaging is in DRY-RUN'), h('p', {}, live ? 'Messages are really sent by SMS and email.' : 'Messages are created and stored in the outbox so you can review them, but nothing is sent. Set MESSAGING_MODE=live on the server when ready.'))),
       h('div', { class: 'grid' },
         [['Tours', o.counts.tours, o.toursDemo ? 'example data' : 'configured'], ['Guests on file', o.counts.guests, 'contact details'], ['Awaiting guest reply', o.counts.awaitingGuest, 'notified, no choice yet'], ['Needs your action', o.counts.pending + o.counts.approved, `${o.counts.pending} new · ${o.counts.approved} to do`]].map(([l, v, n]) => h('div', { class: 'stat' }, h('div', { class: 'l' }, l), h('div', { class: 'v' }, v), h('div', { class: 'n' }, n)))),

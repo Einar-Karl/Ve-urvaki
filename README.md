@@ -18,9 +18,11 @@ npm run demo          # force demo data (presenting without internet)
 npm run check         # ping every data source and print the result
 npm run train         # learn per-tour cancellation thresholds from recorded decisions
 npm run report        # shadow-mode scorecard: model vs. duty managers
-npm test              # 49 tests
+npm test              # 52 tests
 docker compose up -d --build   # production-style run (see .env.example)
 ```
+
+**Vercel:** works as a demo/preview deployment, but storage there is temporary: see [docs/VERCEL.md](docs/VERCEL.md). Use Docker for real data.
 
 **Making it real for Arctic Adventures: follow [docs/SETUP-ARCTIC.md](docs/SETUP-ARCTIC.md).**
 Pages: dashboard `/`, **admin `/admin`**, guest page `/g/<private link>`. Guest flow: [docs/GUEST-FLOW.md](docs/GUEST-FLOW.md). Other programs: [docs/PARTNER-API.md](docs/PARTNER-API.md).
@@ -67,6 +69,7 @@ test/                 node:test suite
 docs/SETUP-ARCTIC.md  step-by-step go-live guide
 docs/GUEST-FLOW.md    guest messaging, rebooking, vouchers, refunds
 docs/PARTNER-API.md   API for other programs and operators
+docs/VERCEL.md        deploying on Vercel (demo) and its limits
 docs/CAMERAS.md       public cameras, own cameras with open-source tools, privacy
 docs/ADDONS.md        how to add connectors
 ```

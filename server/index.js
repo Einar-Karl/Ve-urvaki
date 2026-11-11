@@ -28,7 +28,7 @@ import { getObservations } from './services/observations.js';
 import { publicList as camerasPublic, snapshot as cameraSnapshot } from './services/cameras.js';
 import { loadModel } from './services/model.js';
 import { readTours, buildSites, sitesSignature } from './lib/sites.js';
-import { check as checkAuth } from './lib/auth.js';
+import { check as checkAuth, isPublic as isPublicPath } from './lib/auth.js';
 import { scheduleNightly } from './services/train.js';
 import { guestRoutes, partnerRoutes, adminRoutes } from './routes.js';
 import { upsertGuests, scheduleRetention } from './services/guests.js';
@@ -63,17 +63,26 @@ async function jsonBody(req) {
   return body(req);
 }
 async function body(req, limit = 1e6) {
+  // Vercel's Node runtime may already have read the stream and exposes the result as req.body.
+  let pre; try { pre = req.body; } catch { pre = undefined; }
+  if (pre !== undefined && pre !== null) {
+    if (Buffer.isBuffer(pre)) return JSON.parse(pre.toString() || 'null');
+    return typeof pre === 'string' ? JSON.parse(pre || 'null') : pre;
+  }
   let n = 0; const chunks = [];
   for await (const c of req) { n += c.length; if (n > limit) throw new Error('payload too large'); chunks.push(c); }
   return JSON.parse(Buffer.concat(chunks).toString() || 'null');
 }
 
-export function createServer() {
-  return http.createServer(async (req, res) => {
+// The request handler is exported on its own so Vercel can call it as a function (api/index.js);
+// createServer() wraps it for local use and Docker.
+export const handler = async (req, res) => {
     const url = new URL(req.url, 'http://x');
     const p = url.pathname, mode = url.searchParams.get('mode') || process.env.DATA_MODE || 'auto';
     try {
       if (p === '/healthz') return send(res, 200, { ok: true, uptimeS: Math.round(process.uptime()) });
+      if (process.env.VERCEL && !process.env.DASHBOARD_PASSWORD && !process.env.ADMIN_PASSWORD && !isPublicPath(p))
+        return send(res, 503, { error: 'Locked: set DASHBOARD_PASSWORD (and ADMIN_PASSWORD) in the Vercel project settings, then redeploy.' });
       const auth = checkAuth(req, p);
       if (!auth.ok) { res.setHeader('WWW-Authenticate', `Basic realm="${auth.realm}", charset="UTF-8"`); return send(res, 401, { error: auth.reason || 'authentication required' }); }
       req.auth = auth;
@@ -121,8 +130,8 @@ export function createServer() {
     } catch (e) {
       fail(res, e, e instanceof HttpError ? e.code : e instanceof SyntaxError ? 400 : 502);
     }
-  });
-}
+};
+export const createServer = () => http.createServer(handler);
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const port = +process.env.PORT || 8080;

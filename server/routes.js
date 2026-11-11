@@ -105,7 +105,7 @@ export async function adminRoutes({ req, res, p, url, send, json }) {
   switch (seg[0]) {
     case 'overview': {
       const all = await loadConnectors(), list = cases.listCases();
-      return ok({ messagingMode: messagingMode(), publicBaseUrl: process.env.PUBLIC_BASE_URL || null, toursDemo: readTours().demo,
+      return ok({ ephemeralStorage: !!process.env.VERCEL, messagingMode: messagingMode(), publicBaseUrl: process.env.PUBLIC_BASE_URL || null, toursDemo: readTours().demo,
         counts: { tours: readTours().tours.length, guests: listGuests().length, cases: list.length, awaitingGuest: list.filter(c => c.state === 'sent' && !c.choice).length,
           pending: list.filter(c => c.choice && c.choice.status === 'pending').length, approved: list.filter(c => c.choice && c.choice.status === 'approved').length },
         connectors: all.map(c => ({ id: c.id, kinds: c.kinds, enabled: isEnabled(c.id), configured: c.configured ? c.configured() : true })),

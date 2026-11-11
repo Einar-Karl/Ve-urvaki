@@ -1,0 +1,8 @@
+node_modules
+test
+data
+docs/*.csv
+Dockerfile
+docker-compose.yml
+.github
+*.log

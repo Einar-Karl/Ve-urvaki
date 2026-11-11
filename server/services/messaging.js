@@ -11,7 +11,7 @@ import { getPolicy } from './policy.js';
 import { loadConnectors, withKind } from '../registry.js';
 
 export const mode = () => (process.env.MESSAGING_MODE === 'live' ? 'live' : 'dry-run');
-export const baseUrl = () => (process.env.PUBLIC_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
+export const baseUrl = () => (process.env.PUBLIC_BASE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : 'http://localhost:8080')).replace(/\/$/, '');
 export const guestLink = token => `${baseUrl()}/g/${token}`;
 const outbox = () => col('outbox');
 
