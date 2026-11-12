@@ -245,3 +245,34 @@ figure.cam .age{color:var(--muted);font-family:var(--mono);font-size:11.5px}figu
 .maplegend{background:var(--panel);color:var(--ink);padding:6px 9px;border-radius:6px;font:12px var(--body);display:grid;gap:3px;box-shadow:var(--shadow)}
 .maplegend span{display:flex;gap:6px;align-items:center}.maplegend i{width:10px;height:10px;border-radius:2px;display:inline-block;opacity:.8}
 #maptiles{color:var(--change)}
+
+/* ---------- simulation ("Hermun") ---------- */
+.simbtn{display:inline-flex;align-items:center;gap:6px;font:600 12px var(--body);color:var(--bar-ink);background:transparent;border:1px solid rgb(255 255 255 / .28);border-radius:999px;padding:4px 11px;cursor:pointer;margin-right:8px}
+.simbtn:hover{background:rgb(255 255 255 / .1)}
+#simbanner{position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:1200;background:var(--change);color:#fff;font:700 11px var(--body);letter-spacing:.06em;padding:4px 14px;border-radius:0 0 8px 8px}
+#simbox{position:fixed;right:20px;bottom:20px;width:380px;max-width:calc(100vw - 32px);z-index:1200;background:var(--panel);color:var(--ink);border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 12px 40px rgb(0 0 0 / .25);padding:14px 16px}
+#simbox .sh{display:flex;align-items:center;gap:8px}
+#simbox .k{font:600 11px var(--body);color:var(--muted);text-transform:uppercase;letter-spacing:.05em;flex:1}
+#simbox .x{border:0;background:none;color:var(--muted);font-size:20px;line-height:1;cursor:pointer;padding:0 2px}
+#simbox .lnk{border:0;background:none;color:var(--accent);font:600 12px var(--body);cursor:pointer}
+#simbox .dots{display:flex;gap:4px;margin:8px 0 10px}#simbox .dots i{flex:1;height:3px;border-radius:2px;background:var(--line)}#simbox .dots i.on{background:var(--accent)}
+#simbox h3{margin:0 0 6px;font-size:16px}#simbox p{margin:0 0 10px;font-size:13.5px;line-height:1.5;color:var(--ink)}
+#simbox .fd{background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:12px}
+#simbox .fd b{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+#simfeed{list-style:none;margin:6px 0 0;padding:0;max-height:132px;overflow:auto;font-size:12px}
+#simfeed li{display:flex;gap:8px;padding:3px 0;border-top:1px dashed var(--line);animation:simin .35s ease}
+#simfeed li:first-child{border-top:0}#simfeed li span{color:var(--faint);font-variant-numeric:tabular-nums;min-width:36px}
+#simfeed li.hook::before{content:"⇄";color:var(--accent)}#simfeed li.ok::before{content:"✓";color:var(--go)}
+#simbox .nav{display:flex;gap:8px;justify-content:flex-end}
+@keyframes simin{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.simfocus{outline:3px solid var(--accent)!important;outline-offset:4px;border-radius:var(--radius);box-shadow:0 0 0 9999px rgb(10 19 24 / .38)!important;position:relative;z-index:1100;transition:outline-color .3s}
+.simpress{background:var(--cancel)!important;border-color:var(--cancel)!important;color:#fff!important;animation:simpulse 1.2s ease 2}
+@keyframes simpulse{50%{transform:scale(1.06)}}
+#simphone{position:fixed;left:24px;bottom:20px;z-index:1200;width:270px;background:#111;border-radius:30px;padding:12px;box-shadow:0 12px 40px rgb(0 0 0 / .35);animation:simin .4s ease}
+#simphone .scr{background:#f3f4f6;color:#111;border-radius:20px;padding:12px 10px;max-height:62vh;overflow:auto}
+#simphone .from{font:600 11px var(--body);text-align:center;color:#666;margin-bottom:8px}
+#simphone .bubble{background:#e5e7eb;border-radius:14px;padding:9px 11px;font-size:12px;line-height:1.45}
+#simphone .choices{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
+#simphone .choices span{background:#fff;border:1px solid #d1d5db;border-radius:10px;padding:6px;font-size:11.5px;text-align:center;transition:all .3s}
+#simphone .choices span.on{background:#0b5c70;border-color:#0b5c70;color:#fff}
+@media (max-width:900px){#simbox{left:16px;right:16px;bottom:12px;width:auto}#simphone{display:none}}

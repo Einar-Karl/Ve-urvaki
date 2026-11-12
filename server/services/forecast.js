@@ -71,10 +71,17 @@ async function buildLive(now, sites) {
   return { mode: 'live', start: start.toISOString(), nowHour: now.getUTCHours(), generatedAt: now.toISOString(), hours: HOURS, sources, regions };
 }
 
+// Free Open-Meteo (no OPENMETEO_API_KEY, fine for testing; non-commercial only) allows about 10,000 calls a day.
+// Each location and model counts, so without a key the forecast refreshes every 30 min instead of 10.
+// FORECAST_REFRESH_MIN overrides either default.
+export const freeTier = () => !process.env.OPENMETEO_API_KEY;
+export const refreshMs = () => Math.max(5, Number(process.env.FORECAST_REFRESH_MIN) || (freeTier() ? 30 : 10)) * 60e3;
+
 export async function getForecast({ mode = 'auto', now = new Date(), sites = REGIONS } = {}) {
   if (mode === 'demo') return demoForecast(now, 'forced');
   try {
-    return await memo(`forecast:${Math.floor(now.getTime() / 600e3)}:${sitesSignature(sites)}`, 10 * 60e3, () => buildLive(now, sites));
+    const every = refreshMs();
+    return await memo(`forecast:${Math.floor(now.getTime() / every)}:${sitesSignature(sites)}`, every, () => buildLive(now, sites));
   } catch (e) {
     if (mode === 'live') throw e;
     return demoForecast(now, e.message, e.sources || []);

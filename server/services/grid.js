@@ -15,7 +15,7 @@ export async function getGrid({ now = new Date(), hours = 72, mode = process.env
   if (mode === 'demo') return { mode: 'demo', points: [], hours: 0 };
   const start = utcMidnight(now), keys = hourKeys(start, hours), pts = gridPoints();
   try {
-    return await memo(`grid:${keys[0]}:${hours}`, 30 * 60e3, async () => {
+    return await memo(`grid:${keys[0]}:${hours}`, (process.env.OPENMETEO_API_KEY ? 30 : 120) * 60e3, async () => {
       const key = process.env.OPENMETEO_API_KEY;
       const q = new URLSearchParams({ latitude: pts.map(p => p[0]).join(','), longitude: pts.map(p => p[1]).join(','), hourly: 'wind_gusts_10m,wind_speed_10m,wind_direction_10m', wind_speed_unit: 'ms', timezone: 'GMT', forecast_days: String(Math.ceil(hours / 24) + 1), ...(key ? { apikey: key } : {}) });
       const j = await getJson(`https://${key ? 'customer-' : ''}api.open-meteo.com/v1/forecast?${q}`, { timeout: 20000 });

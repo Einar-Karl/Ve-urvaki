@@ -32,6 +32,10 @@ Pages: dashboard `/`, **admin `/admin`**, guest page `/g/<private link>`. Guest 
 **What data is connected, how precise it is, and what remains:** [docs/DATA-SOURCES.md](docs/DATA-SOURCES.md).
 Opening `index.html` directly (no server) still works with the built-in synthetic model.
 
+**Presenting it:** press **Hermun** in the top bar (or open `/?hermun`, `/?hermun=en` for English): a 10-step walkthrough of a storm day on the real dashboard. Nothing is saved or sent.
+
+**Testing phase:** leave `OPENMETEO_API_KEY` empty to use free Open-Meteo (non-commercial). The forecast then refreshes every 30 min and the map grid every 2 h to stay inside the free daily limit.
+
 ## What is real and what is not
 
 | | |

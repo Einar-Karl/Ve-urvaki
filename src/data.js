@@ -63,7 +63,7 @@ function buildDeps(){
     return;
   }
   TOURS.forEach(t=>[0,1,2].forEach(d=>{if(!t.pax[d])return;t.dep.forEach((hh,i)=>{const h=d*24+hh;if(h<NOW-1)return;
-    const pax=Math.round(t.pax[d]/t.dep.length*(i?0.85:1.15));DEPS.push({key:`${t.id}-${h}`,t,h,pax})})}));
+    const pax=Math.min(t.cap||1e9,Math.round(t.pax[d]/t.dep.length*(i?0.85:1.15)));DEPS.push({key:`${t.id}-${h}`,t,h,pax})})}));
 }
 buildDeps();
 
